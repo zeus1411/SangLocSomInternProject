@@ -6,6 +6,7 @@ import {Form} from '../models/Form';
 import {OrgUnit} from '../models/Orgunit';
 import {Period} from '../models/Period';
 import {DataElement} from '../models/DataElement';
+import {DatasetMember} from '../models/DatasetMember';
 import { ResponseUtil } from '../utils/response.util';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -156,24 +157,22 @@ export class FormInstanceController extends BaseController<FormInstance> {
         const formInstance = await FormInstance.findByPk(id, {
           include: [
             {
-              model: Form,
-              as: 'form'
-            },
-            {
-              model: OrgUnit,
-              as: 'orgunit'
-            },
-            {
-              model: Period,
-              as: 'period'
-            },
-            {
               model: FormInstanceValue,
               as: 'formInstanceValues',
-              include: [{
-                model: DataElement,
-                as: 'dataElement'
-              }]
+              include: [
+                {
+                  model: DataElement,
+                  as: 'dataElement'
+                },
+                {
+                  model: DatasetMember,
+                  as: 'datasetMember',
+                  include: [{
+                    model: DataElement,
+                    as: 'dataelement'  
+                  }]
+                }
+              ]
             }
           ]
         });
