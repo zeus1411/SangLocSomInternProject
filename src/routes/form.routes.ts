@@ -1,12 +1,15 @@
-const express = require('express');
-const router = express.Router();
-const authMiddleware = require('../middleware/auth');
-const { formController } = require('../controllers/all_crud_controllers');
+import { Router } from 'express';
+import { FormController } from '../controllers/form.controller';
+import { authMiddleware } from '../middlewares/auth.middleware';
 
-router.get('/', formController.getAll);
-router.get('/:id', formController.getById);
-router.post('/', authMiddleware, formController.create);
-router.put('/:id', authMiddleware, formController.update);
-router.delete('/:id', authMiddleware, formController.remove);
+const router = Router();
+const controller = new FormController();
 
-module.exports = router;
+router.get('/', (req, res) => controller.getAll(req, res));
+router.get('/:id', (req, res) => controller.getById(req, res));
+router.get('/:id/structure', (req, res) => controller.getFormStructure(req, res));
+router.post('/', authMiddleware, (req, res) => controller.create(req, res));
+router.put('/:id', authMiddleware, (req, res) => controller.update(req, res));
+router.delete('/:id', authMiddleware, (req, res) => controller.delete(req, res));
+
+export default router;

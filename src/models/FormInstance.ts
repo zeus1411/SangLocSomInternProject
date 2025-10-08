@@ -83,3 +83,5 @@ export class FormInstance extends Model {
   @HasMany(() => FormInstanceValue)
   formInstanceValues?: FormInstanceValue[];
 }
+
+export default FormInstance;

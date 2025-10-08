@@ -42,3 +42,4 @@ export class Period extends Model {
   formInstances?: FormInstance[];
 }
 
+export default Period;

@@ -30,3 +30,5 @@ export class OrgUnit extends Model {
   @HasMany(() => FormInstance)
   formInstances?: FormInstance[];
 }
+
+export default OrgUnit;

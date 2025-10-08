@@ -42,3 +42,5 @@ export class DatasetMember extends Model {
   @HasMany(() => FormInstanceValue)
   formInstanceValues?: FormInstanceValue[];
 }
+
+export default DatasetMember;

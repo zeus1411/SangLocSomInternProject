@@ -28,4 +28,4 @@ export class DataElement extends Model {
   formInstanceValues?: FormInstanceValue[];
 }
 
-export default {DataElement};
+export default DataElement;

@@ -22,4 +22,4 @@ export class User extends Model {
   @Column({ type: DataType.BOOLEAN, defaultValue: true })
   isactive?: boolean;
 }
-export default {User};
+export default User;

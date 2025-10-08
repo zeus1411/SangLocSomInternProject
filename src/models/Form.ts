@@ -38,3 +38,5 @@ export class Form extends Model {
   @HasMany(() => FormInstance)
   formInstances?: FormInstance[];
 }
+
+export default Form;

@@ -29,3 +29,5 @@ export class FormMember extends Model {
   @BelongsTo(() => Dataset)
   dataset?: Dataset;
 }
+
+export default FormMember;

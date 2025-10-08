@@ -40,3 +40,5 @@ export class FormInstanceValue extends Model {
   @BelongsTo(() => DataElement)
   dataElement?: DataElement;
 }
+
+export default FormInstanceValue;

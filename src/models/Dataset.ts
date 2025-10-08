@@ -33,3 +33,4 @@ export class Dataset extends Model {
   @HasMany(() => DatasetMember)
   datasetMembers?: DatasetMember[];
 }
+export default Dataset;
