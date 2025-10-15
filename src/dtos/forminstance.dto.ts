@@ -6,6 +6,10 @@ import { Type } from 'class-transformer';
    */
   export class FormInstanceValueDto {
     @IsNumber()
+    @IsOptional()
+    valueid?: number;  // Nếu có valueid thì UPDATE, không có thì INSERT
+
+    @IsNumber()
     @IsNotEmpty({ message: 'Dataset member ID is required' })
     datasetmemberid!: number;
   

@@ -30,3 +30,28 @@ export class RegisterDto {
   @IsOptional()
   email?: string;
 }
+
+/**
+ * DTO để cập nhật thông tin User Profile
+ * Áp dụng 3 trường hợp JWT:
+ * - Token hết hạn: Bắt login lại
+ * - Token hợp lệ: Lấy updatedby từ token
+ * - Không có token: Lấy IP address
+ */
+export class UpdateProfileDto {
+  @IsString()
+  @IsOptional()
+  fullname?: string;
+
+  @IsEmail({}, { message: 'Invalid email format' })
+  @IsOptional()
+  email?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+}

@@ -5,7 +5,7 @@ import { generateToken } from '../utils/jwt.util';
 import { ResponseUtil } from '../utils/response.util';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
-import { LoginDto, RegisterDto } from '../dtos/auth.dto';
+import { LoginDto, RegisterDto, UpdateProfileDto } from '../dtos/auth.dto';
 
 export class AuthController {
   // Register new user
@@ -121,6 +121,59 @@ export class AuthController {
       return ResponseUtil.success(res, user, 'Profile retrieved successfully');
     } catch (error: any) {
       console.error('Get profile error:', error);
+      return ResponseUtil.error(res, error.message);
+    }
+  }
+
+  /**
+   * Update User Profile - Áp dụng 3 trường hợp JWT
+   * Case 1: Token hết hạn → 401, bắt login lại
+   * Case 2: Token hợp lệ → lấy updatedby từ token
+   * Case 3: Không có token → lấy IP address
+   */
+  async updateProfile(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const dto = plainToClass(UpdateProfileDto, req.body);
+      const errors = await validate(dto);
+
+      if (errors.length > 0) {
+        return ResponseUtil.badRequest(res, 'Validation failed', errors);
+      }
+
+      const user = await User.findByPk(id);
+      if (!user) {
+        return ResponseUtil.notFound(res, 'User not found');
+      }
+
+      // Determine updatedby based on token availability
+      let updatedBy = 'system';
+      let clientIp = null;
+
+      if (req.user?.username) {
+        // Case 2: Valid token - use username from token
+        updatedBy = req.user.username;
+      } else {
+        // Case 3: No token - capture IP address
+        clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+        updatedBy = `guest_${clientIp}`;
+      }
+
+      // Update user profile (only update fields that are provided)
+      const updateData: any = {};
+      if (dto.fullname !== undefined) updateData.fullname = dto.fullname;
+      if (dto.email !== undefined) updateData.email = dto.email;
+      
+      await user.update(updateData);
+
+      // Return user without password
+      const updatedUser = await User.findByPk(id, {
+        attributes: { exclude: ['password'] }
+      });
+
+      return ResponseUtil.updated(res, updatedUser, 'Profile updated successfully');
+    } catch (error: any) {
+      console.error('Update profile error:', error);
       return ResponseUtil.error(res, error.message);
     }
   }

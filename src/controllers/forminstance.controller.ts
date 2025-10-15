@@ -26,6 +26,9 @@ export class FormInstanceController extends BaseController<FormInstance> {
         if (errors.length > 0) {
           return ResponseUtil.badRequest(res, 'Validation failed', errors);
         }
+
+        // Get createdby from token (required by authMiddleware)
+        const createdBy = req.user?.username || 'system';
   
         // Create FormInstance
         const formInstance = await FormInstance.create({
@@ -46,7 +49,7 @@ export class FormInstanceController extends BaseController<FormInstance> {
           provinceid: dto.provinceid,
           districtid: dto.districtid,
           createddate: new Date(),
-          createdby: req.user?.username || 'system'
+          createdby: createdBy
         });
   
         // Create FormInstanceValues if provided
@@ -57,21 +60,13 @@ export class FormInstanceController extends BaseController<FormInstance> {
             dataelementid: v.dataelementid,
             value: v.value,
             createddate: new Date(),
-            createdby: req.user?.username || 'system'
+            createdby: createdBy
           }));
   
           await FormInstanceValue.bulkCreate(values);
         }
   
-        // Load complete data
-        const result = await FormInstance.findByPk(formInstance.id, {
-          include: [{
-            model: FormInstanceValue,
-            as: 'formInstanceValues'
-          }]
-        });
-  
-        return ResponseUtil.created(res, result, 'Form instance created successfully');
+        return ResponseUtil.created(res, formInstance, 'Form instance created successfully');
       } catch (error: any) {
         console.error('Create FormInstance error:', error);
         return ResponseUtil.error(res, error.message);
@@ -93,6 +88,9 @@ export class FormInstanceController extends BaseController<FormInstance> {
         if (!formInstance) {
           return ResponseUtil.notFound(res, 'Form instance not found');
         }
+
+        // Get createdby from token (required by authMiddleware)
+        const createdBy = req.user?.username || 'system';
   
         // Update FormInstance
         await formInstance.update({
@@ -115,36 +113,38 @@ export class FormInstanceController extends BaseController<FormInstance> {
           districtid: dto.districtid
         });
   
-        // Update Values if provided
+        // Update or Insert Values based on valueid
         if (dto.values && dto.values.length > 0) {
-          // Delete old values
-          await FormInstanceValue.destroy({
-            where: { forminstanceid: formInstance.id }
-          });
-  
-          // Create new values
-          const values = dto.values.map(v => ({
-            forminstanceid: formInstance.id,
-            datasetmemberid: v.datasetmemberid,
-            dataelementid: v.dataelementid,
-            // valueid: v.valueid,
-            value: v.value,
-            createddate: new Date(),
-            createdby: req.user?.username || 'system'
-          }));
-  
-          await FormInstanceValue.bulkCreate(values);
+          for (const v of dto.values) {
+            if (v.valueid) {
+              // UPDATE existing value
+              await FormInstanceValue.update(
+                {
+                  datasetmemberid: v.datasetmemberid,
+                  dataelementid: v.dataelementid,
+                  value: v.value,
+                  createddate: new Date(),
+                  createdby: createdBy
+                },
+                {
+                  where: { id: v.valueid }
+                }
+              );
+            } else {
+              // INSERT new value
+              await FormInstanceValue.create({
+                forminstanceid: formInstance.id,
+                datasetmemberid: v.datasetmemberid,
+                dataelementid: v.dataelementid,
+                value: v.value,
+                createddate: new Date(),
+                createdby: createdBy
+              });
+            }
+          }
         }
   
-        // Load complete data
-        const result = await FormInstance.findByPk(formInstance.id, {
-          include: [{
-            model: FormInstanceValue,
-            as: 'formInstanceValues'
-          }]
-        });
-  
-        return ResponseUtil.updated(res, result, 'Form instance updated successfully');
+        return ResponseUtil.updated(res, formInstance, 'Form instance updated successfully');
       } catch (error: any) {
         console.error('Update FormInstance error:', error);
         return ResponseUtil.error(res, error.message);
