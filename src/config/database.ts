@@ -1,8 +1,6 @@
 import { Sequelize } from 'sequelize-typescript';
 import dotenv from 'dotenv';
-import path from 'path';
 
-// Import tất cả các model
 import User from '../models/User';
 import OrgUnit from '../models/Orgunit';
 import Form from '../models/Form';

@@ -17,15 +17,7 @@ export class ProgramController extends BaseController<Program> {
       const program = await Program.findByPk(id, {
         include: [{
           model: Form,
-          as: 'forms',
-          include: [{
-            model: FormMember,
-            as: 'formMembers',
-            include: [{
-              model: Dataset,
-              as: 'dataset'
-            }]
-          }]
+          as: 'forms'
         }]
       });
 

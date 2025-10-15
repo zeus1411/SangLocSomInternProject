@@ -127,6 +127,7 @@ export class FormInstanceController extends BaseController<FormInstance> {
             forminstanceid: formInstance.id,
             datasetmemberid: v.datasetmemberid,
             dataelementid: v.dataelementid,
+            // valueid: v.valueid,
             value: v.value,
             createddate: new Date(),
             createdby: req.user?.username || 'system'

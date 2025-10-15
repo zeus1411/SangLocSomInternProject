@@ -17,7 +17,7 @@ export class OrgUnitController extends BaseController<OrgUnit> {
           as: 'children',
           include: [{
             model: OrgUnit,
-            as: 'children'
+            as: 'children',
           }]
         }]
       });

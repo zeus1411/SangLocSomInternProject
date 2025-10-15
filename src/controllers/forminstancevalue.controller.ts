@@ -16,8 +16,18 @@ export class FormInstanceValueController extends BaseController<FormInstanceValu
       const values = await FormInstanceValue.findAll({
         where: { forminstanceid: formInstanceId },
         include: [
-          { model: DataElement, as: 'dataElement' },
-          { model: DatasetMember, as: 'datasetMember' }
+          {
+            model: DataElement,
+            as: 'dataElement'
+          },
+          {
+            model: DatasetMember,
+            as: 'datasetMember',
+            include: [{
+              model: DataElement,
+              as: 'dataelement'  
+            }]
+          }
         ]
       });
       return ResponseUtil.success(res, values);

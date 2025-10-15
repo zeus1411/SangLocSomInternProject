@@ -9,7 +9,7 @@ export class BaseController<T extends Model> {
   // GET all with pagination and filters
   async getAll(req: Request, res: Response) {
     try {
-      const { page = 1, limit = 30, ...filters } = req.query;
+      const { page = 1, limit = 10, ...filters } = req.query;
       
       const offset = (Number(page) - 1) * Number(limit);
 
