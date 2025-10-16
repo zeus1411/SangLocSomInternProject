@@ -1,0 +1,53 @@
+<!-- ======= Header ======= -->
+<header id="header" class="fixed-top header-inner-pages">
+  <div class="container d-flex align-items-center justify-content-between">
+    <h1 class="logo"><a href="./"><strong>Sàng Lọc Sớm </strong></a></h1>
+    <!-- Uncomment below if you prefer to use an image logo -->
+    <!-- <a href="index.html" class="logo"><img src="assets/img/logo.png" alt="" class="img-fluid"></a>-->
+
+    <nav id="navbar" class="navbar">
+
+      <ul>
+        <li><a class="nav-link scrollto" routerLink="/"> Trang chủ </a></li>
+        <li><a class="nav-link scrollto" routerLink="" fragment="about">Giới thiệu</a></li>
+        <li><a class="nav-link scrollto" routerLink="" fragment="features">Bộ công cụ</a></li>
+        <li *ngIf="!user.id"><a class="nav-link scrollto" routerLink="login" >Đăng nhập</a></li>
+        <li *ngIf="user.id" class="dropdown"><a href="#0"><span> Xin chào {{user.fullname}}  </span> <i class="bi bi-chevron-down"></i></a>
+          <ul>
+            <li><a routerLink="/member/results">Trang thành viên</a></li>
+ 
+            <li><a href="#0" (click)="logout()">Đăng xuất <i class="fas fa-sign-out-alt"></i></a></li>
+          </ul>
+        </li>
+        <li><span class="getstarted scrollto btn button" (click)="open(content)">Sàng lọc ngay </span></li>
+      </ul>
+      <i class="bi bi-list mobile-nav-toggle"></i>
+    </nav><!-- .navbar -->
+
+
+  </div>
+
+  <ng-template #content let-modal>
+    <div class="modal-header">
+      <h4 class="modal-title" id="modal-basic-title">Ngày sinh:
+        {{fromDate!.day}}/{{fromDate!.month}}/{{fromDate!.year}}, {{monthDiff(fromDate, calendar.getToday(), false)}}
+        tháng tuổi.</h4>
+      <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('Cross click')"></button>
+    </div>
+    <div class="modal-body">
+      <form>
+        <div class="mb-3">
+          <div class="input-group">
+            <ngb-datepicker #dp (dateSelect)="onDateSelection($event)" [displayMonths]="2"
+              [maxDate]="calendar.getToday()" [ngModelOptions]="{standalone: true}" [(ngModel)]="fromDate"
+              outsideDays="hidden">
+            </ngb-datepicker>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline-dark" (click)="modal.close('Save click')">Bắt đầu</button>
+    </div>
+  </ng-template>
+</header><!-- End Header -->

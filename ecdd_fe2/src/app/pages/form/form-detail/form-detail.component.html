@@ -1,0 +1,23 @@
+
+        <div class="   col-xs-12 "  *ngFor="let fmember of form.Formmembers | sort: 'orderno'">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th scope="col">{{fmember.Dataset.name}}</th>
+                  <th scope="col" width="20%" class="text-center"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let dsmember of fmember.Dataset.Datasetmembers | sort: 'orderno'">
+                  <td>{{dsmember.Dataelement.name}} </td>
+                  <td class="text-center"> 
+                      <app-render [el]="dsmember" [disabled]="true"></app-render>
+                  </td>
+  
+                </tr>
+  
+              </tbody>
+            </table>
+          </div>
+  
+  

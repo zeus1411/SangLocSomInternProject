@@ -1,0 +1,235 @@
+<div class="wrapper">
+
+    <!-- Navbar -->
+    <app-header></app-header>
+    <!-- /.navbar -->
+
+
+    <main id="main">
+
+
+        <section class="section" *ngIf="step == 1 ">
+
+            <div class="container aos-init aos-animate" data-aos="fade-up">
+                <h2>BƯỚC 1: THÔNG TIN TRẺ THAM GIA SÀNG LỌC</h2>
+                <div class="row">
+                    <div class="col-lg-12">
+
+                        <div class="card">
+                            <div class="card-body">
+
+                                <!-- General Form Elements -->
+                                <form>
+                                                   
+                                    <div class="row mb-3">
+                                        <label for="inputText" class="col-sm-2 col-form-label">Kỳ sàng lọc</label>
+                                        <div class="col-sm-10">
+                                            <select class="form-select" [ngModelOptions]="{standalone: true}"  [(ngModel)]="person.periodid">
+                                                <option *ngFor="let item of periods" [value]="item">{{ item.name }}</option>
+                                              </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <label for="inputText" class="col-sm-2 col-form-label">Họ tên trẻ</label>
+                                        <div class="col-sm-10">
+                                            <input type="text" [(ngModel)]="person.name" style="text-transform: capitalize;" [ngModelOptions]="{standalone: true}" class="form-control">
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <label for="inputDate" class="col-sm-2 col-form-label">Ngày tháng năm
+                                            sinh</label>
+                                        <div class="col-sm-10">
+                                      
+                                            <ngb-datepicker #dp  (dateSelect)="onDateSelection($event)"
+                                                [displayMonths]="dpSize" [maxDate]="calendar.getToday()"
+                                                [ngModelOptions]="{standalone: true}" [(ngModel)]="person.birthday"
+                                                outsideDays="hidden">
+                                            </ngb-datepicker>
+<br/>
+                                            <input type="text" 
+                                            value="{{person.birthday.year + '-' +(person.birthday.month < 10 ? '0' : '') +  (person.birthday.month) + '-' + (person.birthday.day < 10 ? '0' : '') + person.birthday.day}}" 
+                                            readonly class="form-control">
+                                        
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <label for="inputNumber" class="col-sm-2 col-form-label">Số tháng tuổi:</label>
+                                        <div class="col-sm-10">
+                                            <input type="number"  [(ngModel)]="person.months"  [ngModelOptions]="{standalone: true}" readonly class="form-control">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <label for="inputText" class="col-sm-2 col-form-label">Họ tên phụ huynh</label>
+                                        <div class="col-sm-10">
+                                            <input type="text" [(ngModel)]="person.parentname" style="text-transform: capitalize;" [ngModelOptions]="{standalone: true}" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <label for="inputText" class="col-sm-2 col-form-label">Số điện thoại</label>
+                                        <div class="col-sm-10">
+                                            <input type="text" [(ngModel)]="person.phone" style="text-transform: capitalize;" [ngModelOptions]="{standalone: true}" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <label for="inputPassword" class="col-sm-2 col-form-label">Địa chỉ</label>
+                                        <div class="col-sm-10">
+                                            <div class="row mb-3">
+
+                                                <div class="col-sm-4">
+                                                    <label>Tỉnh:</label>
+
+                                                    <select class="form-select" (change)="onChangeOrgunit($event)"  [ngModelOptions]="{standalone: true}" [(ngModel)]="person.tinh" >
+                                                        <option value=""></option>
+                                                        <option *ngFor="let item of orgunits[0]" [value]="item.id">{{ item.name }}</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-sm-4">
+                                                    <label>Huyện:</label>
+                                                    <select class="form-select"  (change)="onChangeOrgunit($event)"  [ngModelOptions]="{standalone: true}" [(ngModel)]="person.huyen">
+                                                        <option value=""></option>
+                                                        <option *ngFor="let item of orgunits[1]" [value]="item.id">{{ item.name }}</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-sm-4">
+                                                    <label>Xã:</label>
+                                                    <select class="form-select" [ngModelOptions]="{standalone: true}"  [(ngModel)]="person.orgunitid">
+                                                        <option *ngFor="let item of orgunits[2]" [value]="item.id">{{ item.name }}</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <div class="col-sm-12">
+                                                <textarea class="form-control"  [(ngModel)]="person.address" [ngModelOptions]="{standalone: true}"  style="height: 50px"></textarea>
+                                            </div>
+                                            </div>
+                                            
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <label for="inputPassword" class="col-sm-2 col-form-label">Giới tính</label>
+                                        <div class="col-sm-10">
+                                            <input class="form-check-input" type="radio" name="gender"  [(ngModel)]="person.gender" 
+                                            [ngModelOptions]="{standalone: true}"  id="gender1" [value]="true"  >
+                                            <label class="form-check-label" for="gender1">
+                                              Nam
+                                            </label>
+
+                                            &nbsp;&nbsp;&nbsp;&nbsp;
+                                            <input class="form-check-input" type="radio" name="gender"  [(ngModel)]="person.gender" 
+                                            [ngModelOptions]="{standalone: true}"  id="gender0" [value]="false"  >
+                                            <label class="form-check-label" for="gender0">
+                                              Nữ
+                                            </label>
+
+
+
+
+                                        </div>
+                                    </div>
+
+                                    
+                                    <div class="row mb-3">
+                                        <label for="inputText" class="col-sm-2 col-form-label">Họ tên người sàng lọc</label>
+                                        <div class="col-sm-10">
+                                            <input type="text" [(ngModel)]="person.surveyby" style="text-transform: capitalize;" [ngModelOptions]="{standalone: true}" class="form-control">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mb-3">
+                                        <label for="inputText" class="col-sm-2 col-form-label">Địa điểm sàng lọc</label>
+                                        <div class="col-sm-10">
+                                            <select class="form-select" [ngModelOptions]="{standalone: true}"  [(ngModel)]="person.surveyplace">
+                                                <option value="Trường học" >Trường học</option>
+                                                <option value="Trạm y tế">Trạm y tế</option>
+                                                <option value="Nhà văn hóa ấp">Nhà văn hóa ấp</option>
+                                                <option value="Nhà trẻ">Nhà trẻ</option>
+                                              </select>
+                                        </div>
+                                    </div>
+
+
+
+                                    <div class="row mb-3">
+                                        
+
+                                        <div class="col-sm-12">
+                                            
+                                        <ul class="pagination justify-content-end">
+                                            
+                                            <button type="button" (click)="nextstep(1)" class="btn btn-primary">
+                                                Tiếp theo <i class="bi bi-arrow-right"></i></button>
+                                        </ul>
+                                        </div>
+                                    </div>
+
+                                </form><!-- End General Form Elements -->
+
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                </div>
+            </div>
+
+        </section>
+
+
+
+        <section class="contact" *ngIf="step == 2 ">
+            <div class="container aos-init aos-animate" data-aos="fade-up">
+                <h2 style="text-transform: uppercase">Bước 2: {{form.name}}</h2>
+                <app-form-detail [form]="form"></app-form-detail>
+
+
+
+                <ul class="pagination justify-content-end">
+                    <button type="button" (click)="nextstep(1)" class="btn btn-primary">
+                    Kết quả sàng lọc <i class="bi bi-arrow-right"></i>
+                </button>
+                  </ul>
+                
+            </div>
+        </section>
+
+
+        <section class="contact" *ngIf="step == 3 ">
+
+            <div class="container aos-init aos-animate" data-aos="fade-up">
+
+                <h2 style="text-transform: uppercase">Bước 3: Kết quả sàng lọc</h2>
+
+
+                <app-result [person]="person" [form]="form"></app-result>
+
+
+
+                <div class="row mb-3">
+                    
+                    <div class="col-sm-6">
+
+                        <button type="button" (click)="cancel()" class="btn btn-secondary"><i class="bi bi-x-octagon"></i> Không lưu kết quả</button>
+                    </div>
+
+                    <div class="col-sm-6">
+                        
+                        <ul class="pagination justify-content-end">
+                            <div *ngIf="isloading" class="spinner-border text-primary" role="status"></div>
+                            <button *ngIf="!isloading"  type="button" (click)="saveResult()" class="btn btn-primary"><i class="bi bi-save"></i> Lưu kết quả</button></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main><!-- End #main -->
+
+
+    <!-- Main Footer -->
+    <app-footer></app-footer>
+</div>
+<!-- ./wrapper -->

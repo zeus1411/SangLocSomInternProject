@@ -1,0 +1,56 @@
+<div class="wrapper">
+
+    <!-- Navbar -->
+    <app-header (startForm)="startForm($event)"></app-header>
+    <!-- /.navbar -->
+
+
+    <main id="main">
+
+
+        <!-- ======= Breadcrumbs ======= -->
+        <section class="breadcrumbs">
+            <div class="container">
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2>
+                        ĐĂNG NHẬP
+                    </h2>
+
+                </div>
+
+            </div>
+        </section><!-- End Breadcrumbs -->
+        <section class="contact">
+
+
+            <div class="container ">
+
+                <div class="simple-login-container">
+                    <h2>Login Form</h2>
+                    <div class="row mt-1">
+                        <div class="col-md-12 ">
+                            <input type="text" class="form-control" placeholder="Username" [(ngModel)]="userid" />
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <div class="col-md-12 ">
+                            <input type="password" placeholder="Enter your Password"  [(ngModel)]="pass" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row mt-1">
+                        <div class="col-md-12 ">
+                            <button type="button" (click)="login()" class="btn btn-block btn-login fluid" > <i class="bi bi-box-arrow-in-right"></i> Đăng nhập </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main><!-- End #main -->
+
+
+    <!-- Main Footer -->
+    <app-footer></app-footer>
+</div>
+<!-- ./wrapper -->

@@ -1,0 +1,90 @@
+
+    <div class="row">
+      <div class="col-lg-12">
+  
+        <ul class="pagination justify-content-end">
+          <button type="submit" class="btn-get-started btn btn-primary" routerLink="/member/form-instance"> <i class="bi bi-plus-square"></i> Thêm phiếu sàng lọc</button>
+        </ul>
+        <div class="card">
+            <div class="card-header" >
+              <div class="row">
+                <div class="col-6"></div>
+                <div class="col-6">
+                  <div class="input-group mb-3">
+       
+                    <input type="text" class="form-control" (keyup.enter)="getInstances(pageSize, 1)"  [(ngModel)]="qstr" [ngModelOptions]="{standalone: true}" >
+                    <div class="input-group-append">
+                      <span class="input-group-text "><a class="pe-auto" (click)="getInstances(pageSize, 1)" style="cursor:pointer"><i class="bi bi-search" ></i> Tìm kiếm </a></span>
+                    </div>
+                  </div></div>
+              </div>
+            </div>
+            <div class="card-body">
+
+
+
+              <!-- Active Table -->
+              <table class="table table-responsive">
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Họ tên</th>
+                    <th scope="col">Ngày sinh</th>
+                    <th scope="col">Tuổi</th>
+                    <th scope="col">Giới tính</th>
+                    <th scope="col">Phụ huynh</th>
+                    <th scope="col">SDT</th>
+                    <th scope="col">Ngày sàng lọc</th>
+                    <th scope="col">Người sàng lọc</th>
+                    <th scope="col">Địa điểm</th>
+                    <th scope="col" class="text-center" style="width:15%">Kết quả</th>
+                    <th scope="col" style="width:10%" >#</th>
+                  </tr>
+                </thead>
+                <tbody>
+
+                  <tr *ngFor="let item of instances; let i = index">
+                    <th scope="row">{{(page -1 )*pageSize + i+1}}</th>
+                    <td>{{item.name}}</td>
+                    <td>{{item.birthday | date: 'dd/MM/yyyy'}} </td>
+                    <td>{{item.months}} tháng</td>
+                    <td>{{item.gender ? 'Nam' : 'Nữ'}}</td>
+                    <td>{{item.parentname}}</td>
+                    <td>{{item.phone}}</td>
+                    <td>{{item.createddate | date: 'dd/MM/yyyy HH:mm:ss'}}</td>
+                    <td>{{item.surveyby}}</td>
+                    <td>{{item.surveyplace}}</td>
+                    <td  class="text-center" >
+                      <span  (click)="alert(item.name, item.description, item.ispasses ? 'success' : 'warning')" class="btn"><i  [ngClass]="item.ispasses == true ? 'bi bi-check2' : 'bi bi-x-circle'"></i>
+                        {{item.ispasses ? 'Đạt' : 'Không đạt'}}</span>
+                    </td>
+                    
+                    <td >
+                      <a  [routerLink]="['/member/form-instance',item.id]" class="btn">
+                        <i class="bi bi-pencil-fill"></i> Cập nhật</a>
+                    </td>
+                  </tr>
+                  
+                </tbody>
+              </table>
+              <!-- End Active Table -->
+  
+            </div>
+            <div class="card-footer">
+                <ul class="pagination justify-content-end">
+                    <li class="page-item">
+                      <a [routerLink]=""  class="page-link btn" tabindex="-1"  *ngIf="page > 1 " (click)="changePage(page - 1)">Trước</a>
+                    </li>
+                    <li class="page-item active" aria-current="page">
+                      <a class="page-link" >{{page}}</a>
+                    </li>
+                    <li class="page-item">
+                      <a class="page-link btn" [routerLink]="" *ngIf="instances.length == pageSize" (click)="changePage(page + 1)" >Sau</a>
+                    </li>
+                  </ul>
+            </div>
+          </div>
+  
+
+      </div>
+    </div>

@@ -1,0 +1,10 @@
+
+<label  *ngIf="el.controltype=='textbox'"> {{el.value}}</label>
+<label  *ngIf="el.controltype=='textarea'"> {{el.value}}</label>
+<label  *ngIf="el.controltype=='datepicker'"> {{el.value}}</label>
+<label  *ngIf="el.controltype=='radiobutton' || el.controltype=='selectbox'"> 
+    <ng-container  *ngFor="let item of splitStr(el.valuelist, ';')">
+        <strong  *ngIf="el.value === splitStr(item, '::')[0] ">{{splitStr(item, '::')[1]}}</strong>
+    </ng-container >
+</label>
+

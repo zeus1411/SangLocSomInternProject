@@ -1,0 +1,32 @@
+
+    <input *ngIf="el.controltype=='textbox'"  class="form-control"
+    type="text"
+    [(ngModel)]="el.value"
+    [ngModelOptions]="{standalone: true}"/>
+
+
+<textarea type='text' 
+    [(ngModel)]="el.value"  class="form-control"
+    [ngModelOptions]="{standalone: true}" 
+    *ngIf="el.controltype=='textarea'"
+    [ngClass]="{'required': el.dataelementname.indexOf('*') >=0}"  ></textarea>
+
+<select [(ngModel)]="el.value"  class="form-control"
+    *ngIf="el.controltype=='selectbox'"
+    [ngClass]="{'required': el.dataelementname.indexOf('*') >=0}"
+    [ngModelOptions]="{standalone: true}">
+        <option *ngFor="let item of splitStr(el.Dataelement.itemlist, ';')"
+            [ngValue]="item"> 
+                    {{ item }}
+        </option>
+    </select>
+
+ 
+ <span *ngIf="el.controltype=='radiobutton'" > 
+    
+    <label class="checkbox-inline" *ngFor="let item of splitStr(el.valuelist, ';')">
+        <input type="radio" readonly="disabled"  [value]="splitStr(item, '::')[0] " name="{{el.id}}" (change)="nowscore(el, item)" [(ngModel)]="el.value" > {{splitStr(item, '::')[1]}}
+        &nbsp;&nbsp;
+    </label>
+    
+</span> 

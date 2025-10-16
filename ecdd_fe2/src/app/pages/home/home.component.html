@@ -1,0 +1,186 @@
+<div class="wrapper">
+
+    <!-- Navbar -->
+    <app-header  (startForm)="startForm($event)"></app-header>
+    <!-- /.navbar -->
+  
+    <!-- hero -->
+  <app-hero (startForm)="startForm($event)"></app-hero>
+  
+    <!-- Content Wrapper. Contains page content -->
+    <div class="content-wrapper">
+      <router-outlet>
+  
+  
+        <main id="main">
+  
+          <!-- ======= About Section ======= -->
+          <section id="about" class="about">
+            <div class="container">
+      
+              <div class="row">
+                <div class="col-lg-6 order-1 order-lg-2" data-aos="zoom-in" data-aos-delay="150">
+                  <img src="https://mamnonhappykids.com.vn/app/user/12/12/admin/file/about/gioi-thieu/gioi-thieu-mam-non-song-ngu-happy-kids.jpg" class="img-fluid" alt="">
+                </div>
+                <div class="col-lg-6 pt-4 pt-lg-0 order-2 order-lg-1 content" data-aos="fade-right">
+                  <h3>Giới thiệu</h3>
+                  <p class="">
+                    Công cụ Sàng lọc Phát hiện sớm, Can thiệp sớm khuyết tật trẻ em là một ứng dụng do cục Quản lý Khám Chữa Bệnh (Bộ Y Tế)
+      hợp tác với Trung tâm Phát triển Sức khỏe Bền vững (VietHealth) xây dựng, giúp người dùng tự động 
+              sàng lọc và phát hiện sớm khuyết tật trẻ em thông qua bộ câu hỏi sàng lọc.
+                  </p>
+                  <ul>
+                    <li><i class="bi bi-check-circle"></i> Phù hợp với các bé từ 0 - 6 tuổi.</li>
+                    <li><i class="bi bi-check-circle"></i> Bộ câu hỏi sàng lọc linh động theo từng độ tuổi.</li>
+                    <li><i class="bi bi-check-circle"></i> Tự động đánh giá kết quả sàng lọc theo phiếu trả lời.</li>
+                  </ul>
+      
+                </div>
+              </div>
+      
+            </div>
+          </section><!-- End About Section -->
+      
+          <!-- ======= Counts Section ======= -->
+        <!--
+          <section id="counts" class="counts">
+            <div class="container">
+      
+              <div class="row counters">
+      
+                <div class="col-lg-3 col-6 text-center">
+                  <span data-purecounter-start="0" data-purecounter-end="232" data-purecounter-duration="1" class="purecounter"></span>
+                  <p>Clients</p>
+                </div>
+      
+                <div class="col-lg-3 col-6 text-center">
+                  <span data-purecounter-start="0" data-purecounter-end="521" data-purecounter-duration="1" class="purecounter"></span>
+                  <p>Projects</p>
+                </div>
+      
+                <div class="col-lg-3 col-6 text-center">
+                  <span data-purecounter-start="0" data-purecounter-end="1463" data-purecounter-duration="1" class="purecounter"></span>
+                  <p>Hours Of Support</p>
+                </div>
+      
+                <div class="col-lg-3 col-6 text-center">
+                  <span data-purecounter-start="0" data-purecounter-end="15" data-purecounter-duration="1" class="purecounter"></span>
+                  <p>Hard Workers</p>
+                </div>
+      
+              </div>
+      
+            </div>
+          </section><!-- End Counts Section -->
+      
+      
+          <!-- ======= Frequently Asked Questions Section ======= -->
+          <section id="faq" class="faq">
+            <div class="container" data-aos="fade-up">
+      
+              <div class="section-title">
+                <h2>ỨNG DỤNG DI ĐỘNG</h2>
+                <p>Công cụ đã có mặt trên các nền tảng ứng dụng di động Google Play và App Store</p>
+            
+            
+            <a target="_blank" href="https://play.google.com/store/apps/details?id=com.rnchildquiz" class="btn-color"><i class="bx bxl-play-store"></i> Google Play</a>
+            &nbsp;
+            <a target="_blank" href="https://apps.apple.com/vn/app/id6444251973" class="btn-color"><i class="bx bxl-apple"></i> App Store</a>
+              </div>
+            </div>
+          </section><!-- End Frequently Asked Questions Section -->
+      
+      
+          <!-- ======= Features Section ======= -->
+          <section id="features" class="features">
+            <div class="container" data-aos="fade-up">
+      
+              <div class="section-title">
+                <h2>Bộ công cụ sàng lọc</h2>
+                <p></p>
+              </div>
+      
+              <div class="row">
+                <div class="col-lg-6 order-2 order-lg-1 d-flex flex-column align-items-lg-center">
+      
+                  <div class="icon-box mt-5" data-aos="fade-up" data-aos-delay="200" *ngFor="let item of forms | sort: 'code'">
+                      <a [routerLink]="['/form', item.id]">
+                        <i class="bx bx-cube-alt"></i>
+                        <h4>{{item.name}}</h4>
+                        <p></p>
+                        
+                      </a>
+                  </div>
+      
+      
+                </div>
+                <div class="image col-lg-6 order-1 order-lg-2 " data-aos="zoom-in" data-aos-delay="100">
+                  <img src="https://www.clipartkey.com/mpngs/b/9-99353_kid-clipart.png" alt="" class="img-fluid">
+                </div>
+              </div>
+      
+            </div>
+          </section><!-- End Features Section -->
+      
+
+          
+    <!-- ======= Contact Section ======= -->
+    <section id="contact" class="contact section-bg">
+        <div class="container" data-aos="fade-up">
+  
+          <div class="section-title">
+            <h2>LIÊN HỆ</h2>
+            <p>Sẵn sàng trợ giúp và trả lời bất kỳ câu hỏi nào của bạn.</p>
+          </div>
+  
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="info-box mb-4">
+                <i class="bx bx-map"></i>
+                <h3> Địa chỉ</h3>
+                <p>138 Giảng Võ, Ba Đình, Hà Nội, Việt Nam</p>
+              </div>
+            </div>
+  
+            <div class="col-lg-3 col-md-6">
+              <div class="info-box  mb-4">
+                <i class="bx bx-envelope"></i>
+                <h3>Email</h3>
+                <p>kcb@moh.gov.vn</p>
+              </div>
+            </div>
+  
+            <div class="col-lg-3 col-md-6">
+              <div class="info-box  mb-4">
+                <i class="bx bx-phone-call"></i>
+                <h3>Điện thoại</h3>
+                <p>(+84) 24 6273 2093</p>
+              </div>
+            </div>
+  
+          </div>
+  
+        </div>
+      </section><!-- End Contact Section -->
+  
+        </main><!-- End #main -->
+      
+  
+  
+  
+  
+  
+  
+  
+  
+      </router-outlet>
+    </div>
+    <!-- /.content-wrapper -->
+  
+  
+    <!-- footer-->
+  
+    <app-footer></app-footer>
+  </div>
+  <!-- ./wrapper -->
+  

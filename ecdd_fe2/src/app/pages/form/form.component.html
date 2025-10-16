@@ -1,0 +1,49 @@
+<div class="wrapper">
+
+    <!-- Navbar -->
+    <app-header  (startForm)="startForm($event)"></app-header>
+    <!-- /.navbar -->
+  
+    
+  <main id="main">
+
+    <!-- ======= Breadcrumbs ======= -->
+    <section class="breadcrumbs">
+      <div class="container">
+
+        <div class="d-flex justify-content-between align-items-center">
+          <h2 *ngIf="form">{{form.name}}</h2>
+          <!-- <ol>
+            <li><a href="index.html">Home</a></li>
+            <li>Inner Page</li>
+          </ol> -->
+        </div>
+
+      </div>
+    </section><!-- End Breadcrumbs -->
+
+    <section class="contact" *ngIf="!showResultYN">
+      <div class="container aos-init aos-animate" data-aos="fade-up"  *ngIf="form" >
+          <app-form-detail [form]="form"></app-form-detail>
+
+          
+  
+          <button type="button" (click)="result()" class="btn">Kết quả sàng lọc <i class="bx bx-right-arrow-alt"></i></button>
+      </div>
+    </section>
+
+    
+    <section class="contact" *ngIf="showResultYN">
+      
+      <div class="container aos-init aos-animate" data-aos="fade-up"  *ngIf="form" >
+        <app-result [form]="form"></app-result>
+        </div>
+      </section>
+  </main><!-- End #main -->
+
+  
+    <!-- Main Footer -->
+    <app-footer></app-footer>
+  </div>
+  <!-- ./wrapper -->
+  
