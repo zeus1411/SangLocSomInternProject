@@ -18,10 +18,10 @@ export class AuthController {
         return ResponseUtil.badRequest(res, 'Validation failed', errors);
       }
 
-      // Check if username exists
-      const existingUser = await User.findOne({ where: { username: dto.username } });
+      // Check if email exists
+      const existingUser = await User.findOne({ where: { email: dto.email } });
       if (existingUser) {
-        return ResponseUtil.badRequest(res, 'Username already exists');
+        return ResponseUtil.badRequest(res, 'Email already exists');
       }
 
       // Hash password
@@ -29,24 +29,22 @@ export class AuthController {
 
       // Create user
       const user = await User.create({
-        username: dto.username,
-        password: hashedPassword,
-        fullname: dto.fullname,
+        fullName: dto.fullName,
         email: dto.email,
-        isactive: true
+        password: hashedPassword,
+        status: 'active'
       });
 
       // Generate token
       const token = generateToken({
         userId: user.id,
-        username: user.username
+        email: user.email
       });
 
       return ResponseUtil.created(res, {
         user: {
           id: user.id,
-          username: user.username,
-          fullname: user.fullname,
+          fullName: user.fullName,
           email: user.email
         },
         token
@@ -68,33 +66,32 @@ export class AuthController {
       }
 
       // Find user
-      const user = await User.findOne({ where: { username: dto.username } });
+      const user = await User.findOne({ where: { email: dto.email } });
       if (!user) {
-        return ResponseUtil.unauthorized(res, 'Invalid username or password');
+        return ResponseUtil.unauthorized(res, 'Invalid email or password');
       }
 
       // Check if user is active
-      if (!user.isactive) {
+      if (user.status !== 'active') {
         return ResponseUtil.forbidden(res, 'Account is inactive');
       }
 
       // Verify password
       const isPasswordValid = await bcrypt.compare(dto.password, user.password);
       if (!isPasswordValid) {
-        return ResponseUtil.unauthorized(res, 'Invalid username or password');
+        return ResponseUtil.unauthorized(res, 'Invalid email or password');
       }
 
       // Generate token
       const token = generateToken({
         userId: user.id,
-        username: user.username
+        email: user.email
       });
 
       return ResponseUtil.success(res, {
         user: {
           id: user.id,
-          username: user.username,
-          fullname: user.fullname,
+          fullName: user.fullName,
           email: user.email
         },
         token
@@ -150,9 +147,9 @@ export class AuthController {
       let updatedBy = 'system';
       let clientIp = null;
 
-      if (req.user?.username) {
-        // Case 2: Valid token - use username from token
-        updatedBy = req.user.username;
+      if (req.user?.email) {
+        // Case 2: Valid token - use email from token
+        updatedBy = req.user.email;
       } else {
         // Case 3: No token - capture IP address
         clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
@@ -161,9 +158,9 @@ export class AuthController {
 
       // Update user profile (only update fields that are provided)
       const updateData: any = {};
-      if (dto.fullname !== undefined) updateData.fullname = dto.fullname;
+      if (dto.fullName !== undefined) updateData.fullName = dto.fullName;
       if (dto.email !== undefined) updateData.email = dto.email;
-      
+
       await user.update(updateData);
 
       // Return user without password

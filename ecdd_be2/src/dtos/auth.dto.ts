@@ -1,9 +1,9 @@
 import { IsString, IsNotEmpty, MinLength, IsEmail, IsOptional } from 'class-validator';
 
 export class LoginDto {
-  @IsString()
-  @IsNotEmpty({ message: 'Username is required' })
-  username!: string;
+  @IsEmail({}, { message: 'Invalid email format' })
+  @IsNotEmpty({ message: 'Email is required' })
+  email!: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Password is required' })
@@ -13,22 +13,18 @@ export class LoginDto {
 
 export class RegisterDto {
   @IsString()
-  @IsNotEmpty({ message: 'Username is required' })
-  @MinLength(3, { message: 'Username must be at least 3 characters' })
-  username!: string;
+  @IsNotEmpty({ message: 'Full name is required' })
+  @MinLength(2, { message: 'Full name must be at least 2 characters' })
+  fullName!: string;
+
+  @IsEmail({}, { message: 'Invalid email format' })
+  @IsNotEmpty({ message: 'Email is required' })
+  email!: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Password is required' })
   @MinLength(6, { message: 'Password must be at least 6 characters' })
   password!: string;
-
-  @IsString()
-  @IsOptional()
-  fullname?: string;
-
-  @IsEmail({}, { message: 'Invalid email format' })
-  @IsOptional()
-  email?: string;
 }
 
 /**
@@ -41,7 +37,7 @@ export class RegisterDto {
 export class UpdateProfileDto {
   @IsString()
   @IsOptional()
-  fullname?: string;
+  fullName?: string;
 
   @IsEmail({}, { message: 'Invalid email format' })
   @IsOptional()

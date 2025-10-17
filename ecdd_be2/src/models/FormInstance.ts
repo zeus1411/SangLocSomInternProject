@@ -1,8 +1,9 @@
 import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasMany, PrimaryKey, AutoIncrement } from 'sequelize-typescript';
 import { FormInstanceValue } from './FormInstanceValue';
-import {Form} from './Form';
-import {Period} from './Period';
-import {OrgUnit} from './Orgunit';
+import { Form } from './Form';
+import { Period } from './Period';
+import { OrgUnit } from './Orgunit';
+import { Person } from './Person';
 
 @Table({ tableName: 'form_instance', timestamps: false })
 export class FormInstance extends Model {
@@ -10,9 +11,6 @@ export class FormInstance extends Model {
   @AutoIncrement
   @Column(DataType.INTEGER)
   id!: number;
-
-  @Column(DataType.INTEGER)
-  personid?: number;
 
   @Column(DataType.STRING(255))
   name?: string;
@@ -23,18 +21,8 @@ export class FormInstance extends Model {
   @Column(DataType.STRING(2000))
   address?: string;
 
-  @Column(DataType.SMALLINT)
+  @Column(DataType.INTEGER)
   months?: number;
-
-  @Column(DataType.DATE)
-  createddate?: Date;
-
-  @Column(DataType.STRING(255))
-  createdby?: string;
-
-  @ForeignKey(() => Form)
-  @Column(DataType.SMALLINT)
-  formid?: number;
 
   @Column(DataType.STRING(2000))
   description?: string;
@@ -48,10 +36,10 @@ export class FormInstance extends Model {
   @Column(DataType.STRING(255))
   parentname?: string;
 
-  @Column(DataType.STRING(255))
+  @Column(DataType.STRING(50))
   phone?: string;
 
-  @Column(DataType.STRING(512))
+  @Column(DataType.STRING(255))
   surveyby?: string;
 
   @Column(DataType.STRING(255))
@@ -71,6 +59,29 @@ export class FormInstance extends Model {
   @Column(DataType.INTEGER)
   districtid?: number;
 
+  @ForeignKey(() => Person)
+  @Column(DataType.INTEGER)
+  personid?: number;
+
+  @ForeignKey(() => Form)
+  @Column(DataType.INTEGER)
+  formid?: number;
+
+  @Column({ type: DataType.DATE, field: 'createddate' })
+  createdDate?: Date;
+
+  @Column({ type: DataType.STRING, field: 'createdby' })
+  createdBy?: string;
+
+  @Column({ type: DataType.DATE, field: 'updateddate' })
+  updatedDate?: Date;
+
+  @Column({ type: DataType.STRING, field: 'updatedby' })
+  updatedBy?: string;
+
+  @Column({ type: DataType.STRING, field: 'surveynote' })
+  surveyNote?: string;
+
   @BelongsTo(() => Form)
   form?: Form;
 
@@ -79,6 +90,9 @@ export class FormInstance extends Model {
 
   @BelongsTo(() => Period)
   period?: Period;
+
+  @BelongsTo(() => Person)
+  person?: Person;
 
   @HasMany(() => FormInstanceValue)
   formInstanceValues?: FormInstanceValue[];

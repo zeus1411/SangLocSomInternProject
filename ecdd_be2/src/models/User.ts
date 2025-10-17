@@ -1,25 +1,43 @@
 import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasMany, PrimaryKey, AutoIncrement } from 'sequelize-typescript';
+import { AdminRole } from './AdminRole';
 
-@Table({ tableName: 'users', timestamps: true, createdAt: 'created_at', updatedAt: 'updated_at' })
+@Table({ tableName: 'admin_users', timestamps: true, createdAt: 'createdAt', updatedAt: 'updatedAt', deletedAt: 'deletedAt' })
 export class User extends Model {
   @PrimaryKey
   @AutoIncrement
   @Column(DataType.INTEGER)
   id!: number;
 
-  @Column({ type: DataType.STRING(255), unique: true, allowNull: false })
-  username!: string;
+  @Column({ type: DataType.STRING, allowNull: false })
+  fullName!: string;
 
-  @Column({ type: DataType.STRING(255), allowNull: false })
+  @Column({ type: DataType.STRING, allowNull: false, unique: true })
+  email!: string;
+
+  @Column({ type: DataType.STRING, allowNull: false })
   password!: string;
 
-  @Column(DataType.STRING(255))
-  fullname?: string;
+  @Column({ type: DataType.STRING, allowNull: false, defaultValue: 'active' })
+  status!: string;
 
-  @Column(DataType.STRING(255))
-  email?: string;
+  @Column({ type: DataType.STRING, field: 'phoneNumber' })
+  phoneNumber?: string;
 
-  @Column({ type: DataType.BOOLEAN, defaultValue: true })
-  isactive?: boolean;
+  @Column({ type: DataType.DATE, field: 'birthday' })
+  birthday?: Date;
+
+  @Column({ type: DataType.STRING, field: 'gender' })
+  gender?: string;
+
+  @ForeignKey(() => AdminRole)
+  @Column({ field: 'adminRoleId' })
+  adminRoleId?: number;
+
+  @Column({ field: 'orgunitid' })
+  orgUnitId?: number;
+
+  @BelongsTo(() => AdminRole)
+  adminRole?: AdminRole;
 }
+
 export default User;

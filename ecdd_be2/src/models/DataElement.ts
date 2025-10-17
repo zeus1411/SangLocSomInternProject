@@ -18,9 +18,6 @@ export class DataElement extends Model {
   @Column(DataType.TEXT)
   itemlist?: string;
 
-  @Column(DataType.CHAR(1))
-  trial644?: string;
-
   @HasMany(() => DatasetMember)
   datasetMembers?: DatasetMember[];
 

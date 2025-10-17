@@ -27,6 +27,12 @@ export class FormInstanceValue extends Model {
   @Column(DataType.STRING(255))
   createdby?: string;
 
+  @Column({ type: DataType.DATE, field: 'updateddate' })
+  updatedDate?: Date;
+
+  @Column({ type: DataType.STRING, field: 'updatedby' })
+  updatedBy?: string;
+
   @ForeignKey(() => DataElement)
   @Column(DataType.INTEGER)
   dataelementid?: number;

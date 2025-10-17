@@ -28,7 +28,7 @@ export class FormInstanceController extends BaseController<FormInstance> {
         }
 
         // Get createdby from token (required by authMiddleware)
-        const createdBy = req.user?.username || 'system';
+        const createdBy = req.user?.email || 'system';
   
         // Create FormInstance
         const formInstance = await FormInstance.create({
@@ -90,7 +90,7 @@ export class FormInstanceController extends BaseController<FormInstance> {
         }
 
         // Get createdby from token (required by authMiddleware)
-        const createdBy = req.user?.username || 'system';
+        const createdBy = req.user?.email || 'system';
   
         // Update FormInstance
         await formInstance.update({
