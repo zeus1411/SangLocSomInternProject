@@ -1,10 +1,8 @@
-import { HttpClient } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import Swal from 'sweetalert2';
-
-import { environment } from 'src/environments/environment';
-
+import { AuthService } from '../../services/auth.service';
+import { ApiService } from '../../services/api.service';
 
 @Component({
   selector: 'app-login',
@@ -13,88 +11,104 @@ import { environment } from 'src/environments/environment';
 })
 export class LoginComponent implements OnInit {
 
-  public userid: string = "";
-  public pass: string = "";
+  public email: string = "";
+  public password: string = "";
+  public isLoading: boolean = false;
 
-  constructor(private _router: Router, private route: ActivatedRoute, private http: HttpClient) {
-
-    this._router.routeReuseStrategy.shouldReuseRoute = () => {
-      return false;
-    };
+  constructor(
+    private router: Router,
+    private route: ActivatedRoute,
+    private authService: AuthService,
+    private apiService: ApiService
+  ) {
+    this.router.routeReuseStrategy.shouldReuseRoute = () => false;
   }
-
 
   ngOnInit(): void {
-    
-    let user = JSON.parse(localStorage.getItem('user') || '{}');
-
-    console.log(user)
-    if(user.id){
-      
-      this._router.navigate(['/member/results']);
+    // Check if user is already logged in
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/member/results']);
     }
-
   }
-
 
   public login() {
     // Validate input
-    if (!this.userid || !this.pass) {
-      alert('Please fill in username and password');
+    if (!this.email || !this.password) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Thông báo',
+        text: 'Vui lòng nhập email và mật khẩu'
+      });
       return;
     }
 
-    if (this.pass.length < 6) {
-      alert('Password must be at least 6 characters');
+    if (this.password.length < 6) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Thông báo',
+        text: 'Mật khẩu phải có ít nhất 6 ký tự'
+      });
       return;
     }
 
-    const headers = { Authorization: 'Bearer my-token', 'My-Custom-Header': 'foobar' };
-    this.http.post<any>(environment.url + '/api/auth/login', { username: this.userid, password: this.pass }).subscribe({
-      next: (data) => {
-        if (data.success) {
-          localStorage.setItem('token', data.data.token);
-          localStorage.setItem('user', JSON.stringify(data.data.user));
-          this._router.navigate(['/member/results']);
+    this.isLoading = true;
+
+    this.authService.login({ email: this.email, password: this.password }).subscribe({
+      next: (response) => {
+        this.isLoading = false;
+        if (response.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Đăng nhập thành công!',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          this.router.navigate(['/member/results']);
         } else {
-          localStorage.clear();
-          alert('Username or password incorrect!');
+          Swal.fire({
+            icon: 'error',
+            title: 'Đăng nhập thất bại',
+            text: 'Email hoặc mật khẩu không đúng!'
+          });
         }
       },
       error: (error) => {
+        this.isLoading = false;
         console.error('Login error:', error);
+
+        let errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại.';
+
         if (error.status === 400) {
-          alert('Invalid username or password format. Password must be at least 6 characters.');
+          errorMessage = 'Email hoặc mật khẩu không hợp lệ. Mật khẩu phải có ít nhất 6 ký tự.';
         } else if (error.status === 401) {
-          alert('Invalid username or password!');
-        } else {
-          alert('Login failed. Please try again.');
+          errorMessage = 'Email hoặc mật khẩu không đúng!';
         }
+
+        Swal.fire({
+          icon: 'error',
+          title: 'Lỗi đăng nhập',
+          text: errorMessage
+        });
       }
     });
   }
 
-
   startForm(month: number) {
-
-
-    this.http.get<any>(environment.url + '/api/programs/bycode/ecdd').subscribe(d => {
-
+    // Get program by code to find appropriate form
+    this.apiService.getProgramByCode('ecdd').subscribe((d: any) => {
       let forms = d.data?.forms || [];
       let success = false;
-      forms.forEach((form: { id: number, from: string; to: string; }) => {
 
+      forms.forEach((form: { id: number, from: string; to: string; }) => {
         if (parseInt(form.from) <= month && parseInt(form.to) > month) {
           success = true;
-          this._router.navigate(['form', form.id]);
+          this.router.navigate(['form', form.id]);
         }
       });
 
       if (!success) {
         Swal.fire('Trẻ nằm ngoài độ tuổi sàng lọc!');
       }
-
     });
-
   }
 }

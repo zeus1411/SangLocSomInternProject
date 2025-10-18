@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment } from 'src/environments/environment';
+import { ApiService } from 'src/app/services/api.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -11,7 +12,7 @@ import Swal from 'sweetalert2';
 })
 export class FormComponent implements OnInit {
 
-  constructor(private _router: Router, private route: ActivatedRoute, private http: HttpClient) {
+  constructor(private _router: Router, private route: ActivatedRoute, private http: HttpClient, private apiService: ApiService) {
 
     this._router.routeReuseStrategy.shouldReuseRoute = () => {
       return false;
@@ -23,8 +24,7 @@ export class FormComponent implements OnInit {
 
   ngOnInit(): void {
     let formid = this.route.snapshot.params['formid'];
-    this.http.get<any>(environment.url + '/api/forms/' + formid).subscribe(d => {
-
+    this.apiService.getFormStructure(formid).subscribe((d: any) => {
       this.form = d.data;
     });
   }

@@ -3,18 +3,20 @@ import { Component, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
-
 import { NgbCalendar, NgbDate, NgbDatepickerI18n } from '@ng-bootstrap/ng-bootstrap';
 import { ResultComponent } from '../../result/result.component';
 import { computeStyles } from '@popperjs/core';
 import { CustomDatepickerI18n, I18n } from 'src/app/common/component/custom-datepicker-i18n';
+import { AuthService } from '../../../services/auth.service';
+
 @Component({
   selector: 'app-form-instance',
   templateUrl: './form-instance.component.html',
   styleUrls: ['./form-instance.component.scss'],
-  providers:
-    [I18n, { provide: NgbDatepickerI18n, useClass: CustomDatepickerI18n }]  // define custom NgbDatepickerI18n provider
-
+  providers: [
+    I18n,
+    { provide: NgbDatepickerI18n, useClass: CustomDatepickerI18n }
+  ]
 })
 export class FormInstanceComponent implements OnInit {
 
@@ -35,13 +37,16 @@ export class FormInstanceComponent implements OnInit {
   public periods: any = [];
   public orgunits: any = [[], [], []];
 
-  public isloading : boolean = false;
+  public isloading: boolean = false;
 
-  constructor(private _router: Router, private route: ActivatedRoute, private http: HttpClient, public calendar: NgbCalendar) {
-
-    this._router.routeReuseStrategy.shouldReuseRoute = () => {
-      return false;
-    };
+  constructor(
+    private _router: Router,
+    private route: ActivatedRoute,
+    private authService: AuthService,
+    private http: HttpClient,
+    public calendar: NgbCalendar
+  ) {
+    this._router.routeReuseStrategy.shouldReuseRoute = () => false;
   }
 
   ngOnInit(): void {
@@ -49,65 +54,52 @@ export class FormInstanceComponent implements OnInit {
     if (innerWidth <= 500) {
       this.dpSize = 1;
     }
-    this.user = JSON.parse(localStorage.getItem('user') || '{}');
 
-    this.person.surveyby = this.user.name;
-    if (!this.user.id) {
+    // Get current user from auth service
+    this.user = this.authService.getCurrentUser();
 
+    if (this.user) {
+      this.person.surveyby = this.user.fullName;
+    }
 
+    if (!this.authService.isLoggedIn()) {
       Swal.fire({
         title: 'Vui lòng đăng nhập',
         confirmButtonText: 'OK',
       }).then((result) => {
-
         this._router.navigate(['/login']);
-      })
-
+      });
     }
 
-        
-
-    this.http.get<any>(environment.url + '/api/programs/bycode/ecdd').subscribe(d => {
-
+    // Get program data
+    this.http.get<any>(environment.url + '/api/programs/bycode/ecdd').subscribe((d: any) => {
       this.forms = d.data?.forms || [];
     });
 
     this.getOrgunits(1);
 
-
-
     try {
-
       const id = this.route.snapshot.paramMap.get('id');
       if (id && id !== '') {
-
-        this.http.get<any>(environment.url + '/api/forminstances/' + id).subscribe(d => {
+        this.http.get<any>(environment.url + '/api/forminstances/' + id).subscribe((d: any) => {
           this.person = d.data;
           this.person.periodid = this.person.Period;
           this.periods.push(this.person.Period);
 
           const bod = new Date(this.person.birthday);
+          this.person.birthday = new NgbDate(bod.getFullYear(), bod.getMonth() + 1, bod.getDate());
 
-          this.person. birthday = new NgbDate(bod.getFullYear(),bod.getMonth() + 1,bod.getDate());
-          
-          this.person.tinh = this.person.Orgunit.Parent.parentid;
+          this.person.tinh = this.person.Orgunit.Parent?.parentid;
 
           this.getOrgunits(this.person.tinh);
 
           this.person.huyen = this.person.Orgunit.parentid;
           this.getOrgunits(this.person.huyen);
-          // this.person.gender = this.person.gender == true ? 1 : 0;
           console.log(this.person);
-          
         });
-
       } else {
-
-
-        this.http.get<any>(environment.url + '/api/periods/current?pageSize=20&page=1').subscribe(d => {
-
+        this.http.get<any>(environment.url + '/api/periods/current?pageSize=20&page=1').subscribe((d: any) => {
           if (d.data?.data?.length > 0) {
-    
             this.periods = d.data.data;
             this.person.periodid = this.periods[0];
           } else {
@@ -115,29 +107,23 @@ export class FormInstanceComponent implements OnInit {
               title: 'Hiện tại chưa có kỳ khảo sát nào được mở, vui lòng quay lại sau!',
               confirmButtonText: 'OK',
             }).then((result) => {
-    
               this._router.navigate(['/member/results']);
-            })
+            });
           }
         });
       }
-
     } catch (error) {
-
+      console.error('Error in ngOnInit:', error);
     }
-
-
-
-
-
   }
 
   onChangeOrgunit(event: Event) {
     let selected: any = (event.target as HTMLInputElement).value;
     this.getOrgunits(selected);
   }
+
   getOrgunits(orgunitid: number) {
-    this.http.get<any>(environment.url + '/api/orgunits?parentid=' + orgunitid + '&pageSize=10000&page=1').subscribe(d => {
+    this.http.get<any>(environment.url + '/api/orgunits?parentid=' + orgunitid + '&pageSize=10000&page=1').subscribe((d: any) => {
       const data = d.data?.data || [];
       if (data.length > 0) {
         const lvl = data[0].level;
@@ -145,7 +131,6 @@ export class FormInstanceComponent implements OnInit {
         for (var i = lvl; i < 3; i++) {
           this.orgunits[i] = [];
         }
-
       }
     });
   }
@@ -240,14 +225,14 @@ export class FormInstanceComponent implements OnInit {
         this.forms.forEach((form: { id: number, from: string; to: string; }) => {
           if (parseInt(form.from) <= this.person.months && parseInt(form.to) > this.person.months) {
             success = true;
-            this.http.get<any>(environment.url + '/api/forms/' + form.id).subscribe(d => {
+            this.http.get<any>(environment.url + '/api/forms/' + form.id).subscribe((d: any) => {
               this.form = d.data;
-                    
+
               if(this.person.id){
-                this.http.get<any>(environment.url + '/api/forminstances/' + this.person.id + '/value?pageSize=1000').subscribe(response => {
+                this.http.get<any>(environment.url + '/api/forminstances/' + this.person.id + '/value?pageSize=1000').subscribe((response: any) => {
                   const values = response.data || [];
-  
-  
+
+
                   this.form.Formmembers.forEach((_fmember: { Dataset: { Datasetmembers: any[]; }; }) => {
                       _fmember.Dataset.Datasetmembers.forEach((dsmember: any) => {
                         values.forEach((v: any) => {
@@ -300,7 +285,6 @@ export class FormInstanceComponent implements OnInit {
       cancelButtonText: "Không xác nhận"
     }).then((result) => {
       if (result.isConfirmed) {
-        
         this._router.navigate(['member/results']);
       }
     });

@@ -11,8 +11,8 @@
         <li><a class="nav-link scrollto" routerLink="/"> Trang chủ </a></li>
         <li><a class="nav-link scrollto" routerLink="" fragment="about">Giới thiệu</a></li>
         <li><a class="nav-link scrollto" routerLink="" fragment="features">Bộ công cụ</a></li>
-        <li *ngIf="!user.id"><a class="nav-link scrollto" routerLink="login" >Đăng nhập</a></li>
-        <li *ngIf="user.id" class="dropdown"><a href="#0"><span> Xin chào {{user.fullname}}  </span> <i class="bi bi-chevron-down"></i></a>
+        <li *ngIf="!user?.id"><a class="nav-link scrollto" routerLink="login" >Đăng nhập</a></li>
+        <li *ngIf="user?.id" class="dropdown"><a href="#0"><span> Xin chào {{user?.fullName}}  </span> <i class="bi bi-chevron-down"></i></a>
           <ul>
             <li><a routerLink="/member/results">Trang thành viên</a></li>
  

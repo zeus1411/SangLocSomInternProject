@@ -47,7 +47,12 @@ const startServer = async () => {
     console.log('✅ Kết nối database thành công');
 
     // Đồng bộ hóa các model với database
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({
+      alter: {
+        drop: false  // Không drop tables hiện có
+      },
+      force: false  // Không force recreate tất cả tables
+    });
     console.log('✅ Đồng bộ hóa database thành công');
 
     app.listen(port, () => {
