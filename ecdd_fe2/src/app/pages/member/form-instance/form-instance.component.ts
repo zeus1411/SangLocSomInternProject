@@ -5,7 +5,6 @@ import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { NgbCalendar, NgbDate, NgbDatepickerI18n } from '@ng-bootstrap/ng-bootstrap';
 import { ResultComponent } from '../../result/result.component';
-import { computeStyles } from '@popperjs/core';
 import { CustomDatepickerI18n, I18n } from 'src/app/common/component/custom-datepicker-i18n';
 import { ApiService } from 'src/app/services/api.service';
 import { AuthService } from '../../../services/auth.service';
@@ -26,8 +25,19 @@ export class FormInstanceComponent implements OnInit {
   public dpSize: number = 2;
   public user: any;
   public person: any = {
-    name: "", birthday: this.calendar.getToday(), months: 0, orgunitid: 0, periodid: {},
-    address: "", gender: 1, parentname: "", phone: "", surveyby: "", surveyplace: "Trường học"
+    name: "", 
+    birthday: this.calendar.getToday(), 
+    months: 0, 
+    orgunitid: 0, 
+    periodid: {},
+    address: "", 
+    gender: 1, 
+    parentname: "", 
+    phone: "", 
+    surveyby: "", 
+    surveyplace: "Trường học",
+    tinh: 0,
+    huyen: 0
   };
   public form: any;
   public step: number = 1;
@@ -74,7 +84,7 @@ export class FormInstanceComponent implements OnInit {
       return;
     }
 
-    // Get program data - SỬ DỤNG filterfrom và filterto
+    // Get program data
     this.http.get<any>(environment.url + '/api/programs/bycode/ecdd').subscribe({
       next: (d: any) => {
         this.forms = d.data?.forms || [];
@@ -85,7 +95,8 @@ export class FormInstanceComponent implements OnInit {
       }
     });
 
-    this.getOrgunits(1);
+    // FIX: Load Tỉnh (provinces) ngay từ đầu - KHÔNG truyền tham số
+    this.loadProvinces();
 
     try {
       const id = this.route.snapshot.paramMap.get('id');
@@ -102,11 +113,17 @@ export class FormInstanceComponent implements OnInit {
             const bod = new Date(this.person.birthday);
             this.person.birthday = new NgbDate(bod.getFullYear(), bod.getMonth() + 1, bod.getDate());
 
-            this.person.tinh = this.person.Orgunit.Parent?.parentid;
-            this.getOrgunits(this.person.tinh);
-
-            this.person.huyen = this.person.Orgunit.parentid;
-            this.getOrgunits(this.person.huyen);
+            // Load cascade: Tỉnh -> Huyện -> Xã
+            if (this.person.Orgunit?.Parent?.parentid) {
+              this.person.tinh = this.person.Orgunit.Parent.parentid;
+              this.loadDistricts(this.person.tinh).then(() => {
+                if (this.person.Orgunit?.parentid) {
+                  this.person.huyen = this.person.Orgunit.parentid;
+                  this.loadWards(this.person.huyen);
+                }
+              });
+            }
+            
             console.log('Loaded person data:', this.person);
           },
           error: (error) => {
@@ -125,40 +142,28 @@ export class FormInstanceComponent implements OnInit {
         // CREATE MODE: Get active period
         console.log('Create mode: Loading active periods');
         
-        // SỬ DỤNG ApiService.getActivePeriod() thay vì endpoint cũ
         this.apiService.getActivePeriod().subscribe({
           next: (d: any) => {
             console.log('API Response for active periods:', d);
             
-            // Xử lý nhiều format response có thể có
             let periodsData = [];
             
             if (d.data) {
-              // Format 1: { data: [...] }
               if (Array.isArray(d.data)) {
                 periodsData = d.data;
-              }
-              // Format 2: { data: { data: [...] } }
-              else if (d.data.data && Array.isArray(d.data.data)) {
+              } else if (d.data.data && Array.isArray(d.data.data)) {
                 periodsData = d.data.data;
-              }
-              // Format 3: { data: { rows: [...] } }
-              else if (d.data.rows && Array.isArray(d.data.rows)) {
+              } else if (d.data.rows && Array.isArray(d.data.rows)) {
                 periodsData = d.data.rows;
-              }
-              // Format 4: Single period object
-              else if (d.data.id) {
+              } else if (d.data.id) {
                 periodsData = [d.data];
               }
-            }
-            // Format 5: Direct array response
-            else if (Array.isArray(d)) {
+            } else if (Array.isArray(d)) {
               periodsData = d;
             }
 
             console.log('Processed periods data:', periodsData);
 
-            // Filter chỉ lấy periods đang active
             const activePeriods = periodsData.filter((p: any) => p.isactive === true);
             console.log('Active periods:', activePeriods);
 
@@ -196,64 +201,187 @@ export class FormInstanceComponent implements OnInit {
     }
   }
 
-  onChangeOrgunit(event: Event) {
-    let selected: any = (event.target as HTMLInputElement).value;
-    this.getOrgunits(selected);
-  }
-
-  getOrgunits(orgunitid?: number) {
-    console.log('Loading orgunits with parentId:', orgunitid);
-
-    this.apiService.getOrgUnits(orgunitid).subscribe({
+  // FIX: Load Tỉnh (Level 1) - Gọi API không có tham số, sau đó filter level 1
+  loadProvinces() {
+    console.log('Loading provinces (level 1)...');
+    
+    // Gọi API trực tiếp không qua apiService để có nhiều quyền kiểm soát
+    this.http.get<any>(environment.url + '/api/orgunits?limit=1000').subscribe({
       next: (d: any) => {
-        console.log('API Response for orgunits:', d);
-        const allData = d.data?.data || [];
-        console.log('All orgunits data received:', allData.length, 'records');
-
-        if (allData.length > 0) {
-          if (!orgunitid || orgunitid === 0) {
-            const provinces = allData.filter((item: any) => item.level === 1);
-            console.log('Filtered provinces (level=1):', provinces.length, 'records');
-            this.orgunits[0] = provinces;
-            this.orgunits[1] = [];
-            this.orgunits[2] = [];
-          } else {
-            const currentLevel = allData[0]?.level || 2;
-            this.orgunits[currentLevel - 1] = [];
-
-            allData.forEach((item: any) => {
-              const level = item.level;
-              if (level >= 1 && level <= 3) {
-                this.orgunits[level - 1].push(item);
-              }
-            });
-
-            console.log('Filtered by level - Provinces:', this.orgunits[0].length,
-                       'Districts:', this.orgunits[1].length,
-                       'Wards:', this.orgunits[2].length);
-
-            for (let i = currentLevel; i < 3; i++) {
-              if (i > currentLevel - 1) {
-                this.orgunits[i] = [];
-              }
-            }
+        console.log('Raw API response for provinces:', d);
+        
+        // Xử lý nhiều format response
+        let allData = [];
+        if (d.data) {
+          if (Array.isArray(d.data)) {
+            allData = d.data;
+          } else if (d.data.data && Array.isArray(d.data.data)) {
+            allData = d.data.data;
+          } else if (d.data.rows && Array.isArray(d.data.rows)) {
+            allData = d.data.rows;
           }
+        } else if (Array.isArray(d)) {
+          allData = d;
         }
 
-        console.log('Final orgunits array:', this.orgunits);
+        console.log('All orgunits data:', allData.length);
+
+        // Filter chỉ lấy level 1 (Tỉnh)
+        this.orgunits[0] = allData.filter((item: any) => item.level === 1);
+        console.log('Loaded provinces:', this.orgunits[0].length, this.orgunits[0]);
       },
       error: (error: any) => {
-        console.error('Error loading orgunits:', error);
-        this.orgunits[1] = [];
-        this.orgunits[2] = [];
-        Swal.fire({
-          title: 'Lỗi tải dữ liệu',
-          text: 'Không thể tải danh sách đơn vị hành chính',
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
+        console.error('Error loading provinces:', error);
+        this.orgunits[0] = [];
       }
     });
+  }
+
+  // FIX: Load Huyện (Level 2) theo Tỉnh
+  loadDistricts(provinceId: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      console.log('Loading districts for province:', provinceId);
+      
+      // Gọi API trực tiếp với parentid
+      this.http.get<any>(environment.url + `/api/orgunits?limit=1000&parentid=${provinceId}`).subscribe({
+        next: (d: any) => {
+          console.log('Raw API response for districts:', d);
+          
+          // Xử lý nhiều format response
+          let allData = [];
+          if (d.data) {
+            if (Array.isArray(d.data)) {
+              allData = d.data;
+            } else if (d.data.data && Array.isArray(d.data.data)) {
+              allData = d.data.data;
+            } else if (d.data.rows && Array.isArray(d.data.rows)) {
+              allData = d.data.rows;
+            }
+          } else if (Array.isArray(d)) {
+            allData = d;
+          }
+
+          // Filter level 2 (Huyện) và parentid khớp
+          this.orgunits[1] = allData.filter((item: any) => 
+            item.level === 2 && item.parentid == provinceId
+          );
+          this.orgunits[2] = []; // Clear Xã
+          this.person.huyen = 0;
+          this.person.orgunitid = 0;
+          
+          console.log('Loaded districts:', this.orgunits[1].length, this.orgunits[1]);
+          resolve();
+        },
+        error: (error: any) => {
+          console.error('Error loading districts:', error);
+          this.orgunits[1] = [];
+          this.orgunits[2] = [];
+          reject(error);
+        }
+      });
+    });
+  }
+
+  // FIX: Load Xã (Level 3) theo Huyện
+  loadWards(districtId: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      console.log('Loading wards for district:', districtId);
+      
+      // Gọi API trực tiếp với parentid
+      this.http.get<any>(environment.url + `/api/orgunits?limit=1000&parentid=${districtId}`).subscribe({
+        next: (d: any) => {
+          console.log('Raw API response for wards:', d);
+          
+          // Xử lý nhiều format response
+          let allData = [];
+          if (d.data) {
+            if (Array.isArray(d.data)) {
+              allData = d.data;
+            } else if (d.data.data && Array.isArray(d.data.data)) {
+              allData = d.data.data;
+            } else if (d.data.rows && Array.isArray(d.data.rows)) {
+              allData = d.data.rows;
+            }
+          } else if (Array.isArray(d)) {
+            allData = d;
+          }
+
+          // Filter level 3 (Xã) và parentid khớp
+          this.orgunits[2] = allData.filter((item: any) => 
+            item.level === 3 && item.parentid == districtId
+          );
+          this.person.orgunitid = 0; // Reset Xã selection
+          
+          console.log('Loaded wards:', this.orgunits[2].length, this.orgunits[2]);
+          resolve();
+        },
+        error: (error: any) => {
+          console.error('Error loading wards:', error);
+          this.orgunits[2] = [];
+          reject(error);
+        }
+      });
+    });
+  }
+
+  // FIX: Event handler khi chọn Tỉnh - parse về number và kiểm tra kỹ
+  onProvinceChange(event: Event) {
+    const selected = (event.target as HTMLSelectElement).value;
+    console.log('Province changed to:', selected, 'type:', typeof selected);
+    
+    if (selected && selected !== '0') {
+      const provinceId = parseInt(selected, 10);
+      console.log('Parsed province ID:', provinceId);
+      
+      if (!isNaN(provinceId) && provinceId > 0) {
+        this.person.tinh = provinceId;
+        this.loadDistricts(provinceId);
+      } else {
+        console.error('Invalid province ID:', selected);
+        this.orgunits[1] = [];
+        this.orgunits[2] = [];
+        this.person.huyen = 0;
+        this.person.orgunitid = 0;
+      }
+    } else {
+      this.orgunits[1] = [];
+      this.orgunits[2] = [];
+      this.person.huyen = 0;
+      this.person.orgunitid = 0;
+    }
+  }
+
+  // FIX: Event handler khi chọn Huyện - parse về number và kiểm tra kỹ
+  onDistrictChange(event: Event) {
+    const selected = (event.target as HTMLSelectElement).value;
+    console.log('District changed to:', selected, 'type:', typeof selected);
+    
+    if (selected && selected !== '0') {
+      const districtId = parseInt(selected, 10);
+      console.log('Parsed district ID:', districtId);
+      
+      if (!isNaN(districtId) && districtId > 0) {
+        this.person.huyen = districtId;
+        this.loadWards(districtId);
+      } else {
+        console.error('Invalid district ID:', selected);
+        this.orgunits[2] = [];
+        this.person.orgunitid = 0;
+      }
+    } else {
+      this.orgunits[2] = [];
+      this.person.orgunitid = 0;
+    }
+  }
+
+  // DEPRECATED: Old method - không dùng nữa
+  onChangeOrgunit(event: Event) {
+    // Giữ lại để tương thích, nhưng không dùng
+  }
+
+  // DEPRECATED: Old method - không dùng nữa
+  getOrgunits(orgunitid?: number) {
+    // Giữ lại để tương thích, nhưng không dùng
   }
 
   onDateSelection(date: NgbDate) {
@@ -308,12 +436,18 @@ export class FormInstanceComponent implements OnInit {
     if ((this.step + i) == 2) {
       success = false;
 
-      if(!this.person.orgunitid || this.person.orgunitid == 0){
-        Swal.fire('Bạn chưa chọn đơn vị hành chính, vui lòng hoàn tất trước khi chuyển tiếp!');
+      // FIX: KIỂM TRA orgunitid - parse về number và validate kỹ
+      const orgunitIdStr = this.person.orgunitid;
+      const orgunitId = parseInt(orgunitIdStr, 10);
+      
+      console.log('Validating orgunitid:', orgunitIdStr, 'parsed:', orgunitId, 'type:', typeof orgunitId);
+      
+      if (!orgunitId || isNaN(orgunitId) || orgunitId === 0) {
+        Swal.fire('Bạn chưa chọn đơn vị hành chính (Xã/Phường), vui lòng hoàn tất trước khi chuyển tiếp!');
         return;
       }
 
-      // QUAN TRỌNG: Sử dụng filterfrom và filterto thay vì from và to
+      // Sử dụng filterfrom và filterto
       this.forms.forEach((form: { id: number, filterfrom: string; filterto: string; }) => {
         const from = parseInt(form.filterfrom);
         const to = parseInt(form.filterto);

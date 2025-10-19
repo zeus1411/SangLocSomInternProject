@@ -25,7 +25,7 @@
                                         <label for="inputText" class="col-sm-2 col-form-label">Kỳ sàng lọc</label>
                                         <div class="col-sm-10">
                                             <select class="form-select" [ngModelOptions]="{standalone: true}"  [(ngModel)]="person.periodid">
-                                                <option *ngFor="let item of periods" [value]="item">{{ item.name }}</option>
+                                                <option *ngFor="let item of periods" [ngValue]="item">{{ item.name }}</option>
                                               </select>
                                         </div>
                                     </div>
@@ -80,31 +80,69 @@
                                             <div class="row mb-3">
 
                                                 <div class="col-sm-4">
-                                                    <label>Tỉnh:</label>
-
-                                                    <select class="form-select" (change)="onChangeOrgunit($event)"  [ngModelOptions]="{standalone: true}" [(ngModel)]="person.tinh" >
-                                                        <option value=""></option>
+                                                    <label>Tỉnh: <span class="text-danger">*</span></label>
+                                                    <select class="form-select" 
+                                                            (change)="onProvinceChange($event)"  
+                                                            [ngModelOptions]="{standalone: true}" 
+                                                            [(ngModel)]="person.tinh" 
+                                                            required>
+                                                        <option [value]="0">-- Chọn Tỉnh --</option>
                                                         <option *ngFor="let item of orgunits[0]" [value]="item.id">{{ item.name }}</option>
                                                     </select>
+                                                    <small class="text-muted" *ngIf="orgunits[0].length === 0">
+                                                        Đang tải dữ liệu Tỉnh...
+                                                    </small>
+                                                    <small class="text-success" *ngIf="orgunits[0].length > 0">
+                                                        Có {{ orgunits[0].length }} tỉnh
+                                                    </small>
                                                 </div>
+                                                
                                                 <div class="col-sm-4">
-                                                    <label>Huyện:</label>
-                                                    <select class="form-select"  (change)="onChangeOrgunit($event)"  [ngModelOptions]="{standalone: true}" [(ngModel)]="person.huyen">
-                                                        <option value=""></option>
+                                                    <label>Huyện: <span class="text-danger">*</span></label>
+                                                    <select class="form-select"  
+                                                            (change)="onDistrictChange($event)"  
+                                                            [ngModelOptions]="{standalone: true}" 
+                                                            [(ngModel)]="person.huyen"
+                                                            [disabled]="!person.tinh || person.tinh == 0"
+                                                            required>
+                                                        <option [value]="0">-- Chọn Huyện --</option>
                                                         <option *ngFor="let item of orgunits[1]" [value]="item.id">{{ item.name }}</option>
                                                     </select>
+                                                    <small class="text-muted" *ngIf="orgunits[1].length === 0 && person.tinh > 0">
+                                                        Đang tải dữ liệu Huyện...
+                                                    </small>
+                                                    <small class="text-success" *ngIf="orgunits[1].length > 0">
+                                                        Có {{ orgunits[1].length }} huyện
+                                                    </small>
                                                 </div>
+                                                
                                                 <div class="col-sm-4">
-                                                    <label>Xã:</label>
-                                                    <select class="form-select" [ngModelOptions]="{standalone: true}"  [(ngModel)]="person.orgunitid">
+                                                    <label>Xã: <span class="text-danger">*</span></label>
+                                                    <select class="form-select" 
+                                                            [ngModelOptions]="{standalone: true}"  
+                                                            [(ngModel)]="person.orgunitid"
+                                                            [disabled]="!person.huyen || person.huyen == 0"
+                                                            required>
+                                                        <option [value]="0">-- Chọn Xã --</option>
                                                         <option *ngFor="let item of orgunits[2]" [value]="item.id">{{ item.name }}</option>
                                                     </select>
+                                                    <small class="text-muted" *ngIf="orgunits[2].length === 0 && person.huyen > 0">
+                                                        Đang tải dữ liệu Xã...
+                                                    </small>
+                                                    <small class="text-success" *ngIf="orgunits[2].length > 0">
+                                                        Có {{ orgunits[2].length }} xã
+                                                    </small>
                                                 </div>
                                             </div>
                                             <div class="row mb-3">
                                                 <div class="col-sm-12">
-                                                <textarea class="form-control"  [(ngModel)]="person.address" [ngModelOptions]="{standalone: true}"  style="height: 50px"></textarea>
-                                            </div>
+                                                    <label>Địa chỉ chi tiết:</label>
+                                                    <textarea class="form-control"  
+                                                            [(ngModel)]="person.address" 
+                                                            [ngModelOptions]="{standalone: true}"  
+                                                            style="height: 50px"
+                                                            placeholder="Số nhà, tên đường..."></textarea>
+                                                </div>
                                             </div>
                                             
                                         </div>
@@ -125,10 +163,6 @@
                                             <label class="form-check-label" for="gender0">
                                               Nữ
                                             </label>
-
-
-
-
                                         </div>
                                     </div>
 
