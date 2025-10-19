@@ -152,7 +152,10 @@ export class ApiService {
     return this.http.get(`${environment.url}/api/periods`);
   }
 
+  // QUAN TRỌNG: Method mới để lấy active periods
   getActivePeriod(): Observable<any> {
+    // Gọi đến endpoint /api/periods/active hoặc filter isactive=true
+    // Tùy vào backend implementation
     return this.http.get(`${environment.url}/api/periods/active`);
   }
 

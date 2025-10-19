@@ -71,43 +71,120 @@ export class FormInstanceComponent implements OnInit {
       }).then((result) => {
         this._router.navigate(['/login']);
       });
+      return;
     }
 
-    // Get program data
-    this.http.get<any>(environment.url + '/api/programs/bycode/ecdd').subscribe((d: any) => {
-      this.forms = d.data?.forms || [];
+    // Get program data - SỬ DỤNG filterfrom và filterto
+    this.http.get<any>(environment.url + '/api/programs/bycode/ecdd').subscribe({
+      next: (d: any) => {
+        this.forms = d.data?.forms || [];
+        console.log('Loaded forms for instance:', this.forms);
+      },
+      error: (error) => {
+        console.error('Error loading forms:', error);
+      }
     });
 
     this.getOrgunits(1);
 
     try {
       const id = this.route.snapshot.paramMap.get('id');
+      
       if (id && id !== '') {
-        this.http.get<any>(environment.url + '/api/forminstances/' + id).subscribe((d: any) => {
-          this.person = d.data;
-          this.person.periodid = this.person.Period;
-          this.periods.push(this.person.Period);
+        // EDIT MODE: Load existing form instance
+        console.log('Loading existing form instance:', id);
+        this.http.get<any>(environment.url + '/api/forminstances/' + id).subscribe({
+          next: (d: any) => {
+            this.person = d.data;
+            this.person.periodid = this.person.Period;
+            this.periods.push(this.person.Period);
 
-          const bod = new Date(this.person.birthday);
-          this.person.birthday = new NgbDate(bod.getFullYear(), bod.getMonth() + 1, bod.getDate());
+            const bod = new Date(this.person.birthday);
+            this.person.birthday = new NgbDate(bod.getFullYear(), bod.getMonth() + 1, bod.getDate());
 
-          this.person.tinh = this.person.Orgunit.Parent?.parentid;
+            this.person.tinh = this.person.Orgunit.Parent?.parentid;
+            this.getOrgunits(this.person.tinh);
 
-          this.getOrgunits(this.person.tinh);
-
-          this.person.huyen = this.person.Orgunit.parentid;
-          this.getOrgunits(this.person.huyen);
-          console.log(this.person);
+            this.person.huyen = this.person.Orgunit.parentid;
+            this.getOrgunits(this.person.huyen);
+            console.log('Loaded person data:', this.person);
+          },
+          error: (error) => {
+            console.error('Error loading form instance:', error);
+            Swal.fire({
+              title: 'Lỗi tải dữ liệu!',
+              text: 'Không thể tải thông tin phiếu sàng lọc.',
+              icon: 'error',
+              confirmButtonText: 'OK'
+            }).then(() => {
+              this._router.navigate(['/member/results']);
+            });
+          }
         });
       } else {
-        this.http.get<any>(environment.url + '/api/periods/current?pageSize=20&page=1').subscribe((d: any) => {
-          if (d.data?.data?.length > 0) {
-            this.periods = d.data.data;
-            this.person.periodid = this.periods[0];
-          } else {
+        // CREATE MODE: Get active period
+        console.log('Create mode: Loading active periods');
+        
+        // SỬ DỤNG ApiService.getActivePeriod() thay vì endpoint cũ
+        this.apiService.getActivePeriod().subscribe({
+          next: (d: any) => {
+            console.log('API Response for active periods:', d);
+            
+            // Xử lý nhiều format response có thể có
+            let periodsData = [];
+            
+            if (d.data) {
+              // Format 1: { data: [...] }
+              if (Array.isArray(d.data)) {
+                periodsData = d.data;
+              }
+              // Format 2: { data: { data: [...] } }
+              else if (d.data.data && Array.isArray(d.data.data)) {
+                periodsData = d.data.data;
+              }
+              // Format 3: { data: { rows: [...] } }
+              else if (d.data.rows && Array.isArray(d.data.rows)) {
+                periodsData = d.data.rows;
+              }
+              // Format 4: Single period object
+              else if (d.data.id) {
+                periodsData = [d.data];
+              }
+            }
+            // Format 5: Direct array response
+            else if (Array.isArray(d)) {
+              periodsData = d;
+            }
+
+            console.log('Processed periods data:', periodsData);
+
+            // Filter chỉ lấy periods đang active
+            const activePeriods = periodsData.filter((p: any) => p.isactive === true);
+            console.log('Active periods:', activePeriods);
+
+            if (activePeriods.length > 0) {
+              this.periods = activePeriods;
+              this.person.periodid = this.periods[0];
+              console.log('Selected period:', this.person.periodid);
+            } else {
+              console.warn('No active periods found');
+              Swal.fire({
+                title: 'Hiện tại chưa có kỳ khảo sát nào được mở!',
+                text: 'Vui lòng liên hệ quản trị viên để kích hoạt kỳ khảo sát.',
+                icon: 'warning',
+                confirmButtonText: 'OK'
+              }).then((result) => {
+                this._router.navigate(['/member/results']);
+              });
+            }
+          },
+          error: (error) => {
+            console.error('Error loading active periods:', error);
             Swal.fire({
-              title: 'Hiện tại chưa có kỳ khảo sát nào được mở, vui lòng quay lại sau!',
-              confirmButtonText: 'OK',
+              title: 'Lỗi tải dữ liệu!',
+              text: 'Không thể tải thông tin kỳ khảo sát. Vui lòng thử lại sau.',
+              icon: 'error',
+              confirmButtonText: 'OK'
             }).then((result) => {
               this._router.navigate(['/member/results']);
             });
@@ -127,7 +204,6 @@ export class FormInstanceComponent implements OnInit {
   getOrgunits(orgunitid?: number) {
     console.log('Loading orgunits with parentId:', orgunitid);
 
-    // Sử dụng ApiService thay vì gọi trực tiếp HTTP
     this.apiService.getOrgUnits(orgunitid).subscribe({
       next: (d: any) => {
         console.log('API Response for orgunits:', d);
@@ -135,25 +211,16 @@ export class FormInstanceComponent implements OnInit {
         console.log('All orgunits data received:', allData.length, 'records');
 
         if (allData.length > 0) {
-          // Nếu không có parentid, chỉ lấy records level = 1 (tỉnh)
           if (!orgunitid || orgunitid === 0) {
             const provinces = allData.filter((item: any) => item.level === 1);
             console.log('Filtered provinces (level=1):', provinces.length, 'records');
             this.orgunits[0] = provinces;
-            // Clear các cấp dưới khi load tỉnh
             this.orgunits[1] = [];
             this.orgunits[2] = [];
           } else {
-            // Nếu có parentid, lấy tất cả records (sẽ được filter theo parentid bởi backend)
-            // Và lưu vào đúng mảng dựa trên level, nhưng không reset mảng cấp trên
-
-            // Xác định cấp độ hiện tại dựa trên level của records trả về
             const currentLevel = allData[0]?.level || 2;
-
-            // Clear mảng cấp hiện tại trước khi thêm dữ liệu mới
             this.orgunits[currentLevel - 1] = [];
 
-            // Lưu vào đúng mảng dựa trên level
             allData.forEach((item: any) => {
               const level = item.level;
               if (level >= 1 && level <= 3) {
@@ -165,9 +232,8 @@ export class FormInstanceComponent implements OnInit {
                        'Districts:', this.orgunits[1].length,
                        'Wards:', this.orgunits[2].length);
 
-            // Clear các cấp dưới level hiện tại
             for (let i = currentLevel; i < 3; i++) {
-              if (i > currentLevel - 1) { // Không clear mảng cấp trên và cấp hiện tại
+              if (i > currentLevel - 1) {
                 this.orgunits[i] = [];
               }
             }
@@ -178,7 +244,6 @@ export class FormInstanceComponent implements OnInit {
       },
       error: (error: any) => {
         console.error('Error loading orgunits:', error);
-        // Khi có lỗi, chỉ clear các mảng cấp dưới, không clear tỉnh
         this.orgunits[1] = [];
         this.orgunits[2] = [];
         Swal.fire({
@@ -190,35 +255,28 @@ export class FormInstanceComponent implements OnInit {
       }
     });
   }
-  onDateSelection(date: NgbDate) {
 
+  onDateSelection(date: NgbDate) {
     this.person.months = this.monthDiff(date, this.calendar.getToday(), false);
   }
+
   onBirthdayChange() {
     this.person.months = this.monthDiff(this.person.birthday, this.calendar.getToday(), false);
   }
 
   monthDiff(date1: NgbDate, date2: NgbDate, roundUpFractionalMonths: boolean) {
-    //Months will be calculated between start and end dates.
-    //Make sure start date is less than end date.
-    //But remember if the difference should be negative.
     var startDate = date1;
     var endDate = date2;
     var inverse = false;
 
-
-    //Calculate the differences between the start and end dates
     var yearsDifference = endDate.year - startDate.year;
     var monthsDifference = endDate.month - startDate.month;
     var daysDifference = endDate.day - startDate.day;
 
     var monthCorrection = 0;
-    //If roundUpFractionalMonths is true, check if an extra month needs to be added from rounding up.
-    //The difference is done by ceiling (round up), e.g. 3 months and 1 day will be 4 months.
     if (roundUpFractionalMonths === true && daysDifference > 0) {
       monthCorrection = 1;
     }
-    //If the day difference between the 2 months is negative, the last month is not a whole month.
     else if (roundUpFractionalMonths !== true && daysDifference < 0) {
       monthCorrection = -1;
     }
@@ -226,38 +284,26 @@ export class FormInstanceComponent implements OnInit {
     return (inverse ? -1 : 1) * (yearsDifference * 12 + monthsDifference + monthCorrection);
   }
 
-
-  nextstep(i : number) {
+  nextstep(i: number) {
     let success = false;
-
-
 
     if ((this.step + i) == 3) {
       success = true;
-      //kiem tra data 
       for (let fmember of this.form.Formmembers) {
-
         for (let dsm of fmember.Dataset.Datasetmembers) {
           if (!dsm.hasOwnProperty("value") || dsm.value === '') {
             Swal.fire('Bạn chưa hoàn tất phiếu, vui lòng hoàn thành tất cả các câu trả lời!');
             success = false;
             return;
           }
-
         }
-
       }
       if (success == true) {
-        
-        // const jsDate = new Date(this.person.birthday.year, this.person.birthday.month - 1, this.person.birthday.day);
         this.person.birthday = this.person.birthday.year
           + '-' + (this.person.birthday.month < 10 ? '0' : '') + (this.person.birthday.month)
           + '-' + (this.person.birthday.day < 10 ? '0' : '') + this.person.birthday.day;
-
       }
-
     }
-
 
     if ((this.step + i) == 2) {
       success = false;
@@ -266,20 +312,28 @@ export class FormInstanceComponent implements OnInit {
         Swal.fire('Bạn chưa chọn đơn vị hành chính, vui lòng hoàn tất trước khi chuyển tiếp!');
         return;
       }
-      this.forms.forEach((form: { id: number, from: string; to: string; }) => {
-        if (parseInt(form.from) <= this.person.months && parseInt(form.to) > this.person.months) {
+
+      // QUAN TRỌNG: Sử dụng filterfrom và filterto thay vì from và to
+      this.forms.forEach((form: { id: number, filterfrom: string; filterto: string; }) => {
+        const from = parseInt(form.filterfrom);
+        const to = parseInt(form.filterto);
+        if (from <= this.person.months && this.person.months < to) {
           success = true;
         }
       });
+
       if (!success) {
         Swal.fire('Trẻ nằm ngoài độ tuổi sàng lọc!');
         return;
       }
 
-      //get form data
+      // Get form data
       if(!this.form){
-        this.forms.forEach((form: { id: number, from: string; to: string; }) => {
-          if (parseInt(form.from) <= this.person.months && parseInt(form.to) > this.person.months) {
+        this.forms.forEach((form: { id: number, filterfrom: string; filterto: string; }) => {
+          const from = parseInt(form.filterfrom);
+          const to = parseInt(form.filterto);
+          
+          if (from <= this.person.months && this.person.months < to) {
             success = true;
             this.http.get<any>(environment.url + '/api/forms/' + form.id).subscribe((d: any) => {
               this.form = d.data;
@@ -287,7 +341,6 @@ export class FormInstanceComponent implements OnInit {
               if(this.person.id){
                 this.http.get<any>(environment.url + '/api/forminstances/' + this.person.id + '/value?pageSize=1000').subscribe((response: any) => {
                   const values = response.data || [];
-
 
                   this.form.Formmembers.forEach((_fmember: { Dataset: { Datasetmembers: any[]; }; }) => {
                       _fmember.Dataset.Datasetmembers.forEach((dsmember: any) => {
@@ -310,25 +363,21 @@ export class FormInstanceComponent implements OnInit {
           }
         });
       }
-
     }
 
-
     this.step = this.step + i;
-    
-    
   }
 
-  splitStr(str : string, sep : string) {
+  splitStr(str: string, sep: string) {
     return str.split(sep);
   }
 
-  
-  nowscore(el : any, item : string){
+  nowscore(el: any, item: string){
     if(this.splitStr(item, "::") && this.splitStr(item,"::")[2]){
       el.nowscore = this.splitStr(item,"::")[2];
     }
   }
+
   cancel(){
     Swal.fire({
       title: "Bạn không muốn lưu kết quả sàng lọc này?",
@@ -350,9 +399,9 @@ export class FormInstanceComponent implements OnInit {
     let that = this;
     that.isloading = true;
 
-
     let headers = new HttpHeaders().set('Authorization', 'Bearer ' + (localStorage.getItem("token") || ''));
     let values = [];
+    
     for (let fmember of this.form.Formmembers) {
       for (let dsmember of fmember.Dataset.Datasetmembers) {
         if(!dsmember.valueid){
@@ -363,16 +412,14 @@ export class FormInstanceComponent implements OnInit {
           value: dsmember.value,
           id: dsmember.valueid
         };
-        
         values.push(value);
       }
-
     }
-
 
     if(!this.person.id){
       this.person.id = 0;
     }
+
     let body = {
       instance: {
         id: this.person.id,
@@ -389,39 +436,43 @@ export class FormInstanceComponent implements OnInit {
         formid: this.form.id,
         description: this.form.explain,
         orgunitid: this.person.orgunitid,
-        periodid : this.person.periodid.id,
+        periodid: this.person.periodid.id,
         createdby: this.person.createdby
-
       },
       values: values
     };
 
+    console.log('Saving form instance with data:', body);
 
-    this.http.post<any>(environment.url + '/api/forminstances/', body, { headers: headers }).subscribe(
-      d => {
-      if(d.success){
+    this.http.post<any>(environment.url + '/api/forminstances/', body, { headers: headers }).subscribe({
+      next: (d) => {
+        if(d.success){
+          Swal.fire({
+            title: 'Lưu kết quả thành công!',
+          }).then((result) => {
+            that._router.navigate(['member/results']);
+            that.isloading = false;
+          });
+        } else {
+          Swal.fire({
+            title: 'Lưu không thành công!',
+            text: d.message,
+            icon: "error",
+          }).then((result) => {
+            that.isloading = false;
+          });
+        }
+      },
+      error: (error) => {
+        console.error('Error saving form instance:', error);
         Swal.fire({
-          title: 'Lưu kết quả thành công!',
-        }).then((result) => {
-          that._router.navigate(['member/results']);
-          that.isloading = false;
-        })
-
-      }else{
-        Swal.fire({
-          title: 'Lưu không thành công!',
-          text: d.message,
+          title: 'Lỗi lưu dữ liệu!',
+          text: 'Không thể lưu phiếu sàng lọc. Vui lòng thử lại.',
           icon: "error",
         }).then((result) => {
-          that._router.navigate(['member/results']);
           that.isloading = false;
-        })
+        });
       }
     });
-
-
- 
-
   }
-
 }
