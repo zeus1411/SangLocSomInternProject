@@ -17,25 +17,33 @@
 
       <ng-template #content let-modal>
         <div class="modal-header">
-          <h4 class="modal-title" id="modal-basic-title">Ngày sinh:
-            {{fromDate!.day}}/{{fromDate!.month}}/{{fromDate!.year}}, {{monthDiff(fromDate, calendar.getToday(), false)}}
-            tháng tuổi.</h4>
+          <h4 class="modal-title" id="modal-basic-title">
+            <span *ngIf="fromDate">Ngày sinh: {{fromDate.day}}/{{fromDate.month}}/{{fromDate.year}}</span>
+            <span *ngIf="!fromDate">Vui lòng chọn ngày sinh</span>
+          </h4>
           <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('Cross click')"></button>
         </div>
         <div class="modal-body">
           <form>
             <div class="mb-3">
+              <label class="form-label">Chọn ngày sinh của trẻ:</label>
               <div class="input-group">
                 <ngb-datepicker #dp (dateSelect)="onDateSelection($event)" [displayMonths]="dpSize"
                   [maxDate]="calendar.getToday()" [ngModelOptions]="{standalone: true}" [(ngModel)]="fromDate"
                   outsideDays="hidden">
                 </ngb-datepicker>
               </div>
+              <div class="mt-2" *ngIf="fromDate">
+                <small class="text-muted">
+                  Trẻ {{monthDiff(fromDate, calendar.getToday(), false)}} tháng tuổi
+                </small>
+              </div>
             </div>
           </form>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-dark" (click)="modal.close('Save click')">Bắt đầu</button>
+          <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss('Cancel')">Hủy</button>
+          <button type="button" class="btn btn-primary" (click)="modal.close('Start')" [disabled]="!fromDate">Bắt đầu sàng lọc</button>
         </div>
       </ng-template>
     </div>

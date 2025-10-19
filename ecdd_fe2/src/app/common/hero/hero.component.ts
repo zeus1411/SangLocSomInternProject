@@ -1,8 +1,7 @@
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { Router } from '@angular/router';
-
+import Swal from 'sweetalert2';
 import { NgbCalendar, NgbDate, NgbDatepickerI18n } from '@ng-bootstrap/ng-bootstrap';
-
 import { NgbModal, ModalDismissReasons } from '@ng-bootstrap/ng-bootstrap';
 import { CustomDatepickerI18n, I18n } from '../component/custom-datepicker-i18n';
 
@@ -59,10 +58,56 @@ export class HeroComponent implements OnInit {
   }
   open(content : any) {
     this.modalService.open(content, {ariaLabelledBy: 'modal-basic-title'}).result.then((result) => {
+      console.log('Modal result:', result);
+      console.log('fromDate before calculation:', this.fromDate);
 
-      this.startForm.emit (this.monthDiff(this.fromDate, this.calendar.getToday(), false));
+      // Kiểm tra người dùng đã chọn ngày sinh chưa
+      if (!this.fromDate) {
+        Swal.fire({
+          title: 'Vui lòng chọn ngày sinh!',
+          text: 'Bạn cần chọn ngày sinh của trẻ để tiếp tục sàng lọc.',
+          icon: 'warning',
+          confirmButtonText: 'OK'
+        });
+        return;
+      }
+
+      // Kiểm tra ngày sinh không được là ngày trong tương lai
+      const today = this.calendar.getToday();
+      console.log('Today:', today);
+      console.log('fromDate:', this.fromDate);
+
+      // So sánh ngày: nếu fromDate > today thì không hợp lệ
+      if (this.fromDate.after(today)) {
+        Swal.fire({
+          title: 'Ngày sinh không hợp lệ!',
+          text: 'Ngày sinh không thể là ngày trong tương lai. Vui lòng chọn ngày sinh thực tế của trẻ.',
+          icon: 'warning',
+          confirmButtonText: 'OK'
+        });
+        return;
+      }
+
+      // XÓA KIỂM TRA fromDate.equals(today) vì trẻ mới sinh (0 tháng) vẫn hợp lệ
+
+      const calculatedMonth = this.monthDiff(this.fromDate, this.calendar.getToday(), false);
+      console.log('Calculated month:', calculatedMonth);
+      
+      // Kiểm tra thêm kết quả tính toán
+      if (calculatedMonth < 0) {
+        Swal.fire({
+          title: 'Lỗi tính toán!',
+          text: 'Có lỗi xảy ra khi tính độ tuổi. Vui lòng thử lại.',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+        return;
+      }
+
+      this.startForm.emit(calculatedMonth);
     }, (reason) => {
-      // this.closeResult = `Dismissed ${this.getDismissReason(reason)}`;
+      console.log('Modal dismissed with reason:', reason);
+      // Người dùng đóng modal mà không bắt đầu
     });
   }
 
@@ -79,6 +124,14 @@ export class HeroComponent implements OnInit {
 
   monthDiff(date1 : NgbDate,date2 : NgbDate,roundUpFractionalMonths : boolean)
 {
+    // Kiểm tra null values trước khi tính toán
+    if (!date1 || !date2) {
+      console.log('monthDiff: null values detected, returning 0');
+      return 0;
+    }
+
+    console.log('monthDiff input - date1:', date1, 'date2:', date2, 'roundUpFractionalMonths:', roundUpFractionalMonths);
+
     //Months will be calculated between start and end dates.
     //Make sure start date is less than end date.
     //But remember if the difference should be negative.
@@ -105,7 +158,17 @@ export class HeroComponent implements OnInit {
         monthCorrection=-1;
     }
 
-    return (inverse?-1:1)*(yearsDifference*12+monthsDifference+monthCorrection);
+    const result = (inverse?-1:1)*(yearsDifference*12+monthsDifference+monthCorrection);
+    console.log('monthDiff calculation:', {
+      yearsDifference,
+      monthsDifference,
+      daysDifference,
+      monthCorrection,
+      result,
+      inverse
+    });
+
+    return result;
 }
 
 }

@@ -7,6 +7,7 @@ import { NgbCalendar, NgbDate, NgbDatepickerI18n } from '@ng-bootstrap/ng-bootst
 import { ResultComponent } from '../../result/result.component';
 import { computeStyles } from '@popperjs/core';
 import { CustomDatepickerI18n, I18n } from 'src/app/common/component/custom-datepicker-i18n';
+import { ApiService } from 'src/app/services/api.service';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
@@ -44,6 +45,7 @@ export class FormInstanceComponent implements OnInit {
     private route: ActivatedRoute,
     private authService: AuthService,
     private http: HttpClient,
+    private apiService: ApiService,
     public calendar: NgbCalendar
   ) {
     this._router.routeReuseStrategy.shouldReuseRoute = () => false;
@@ -122,15 +124,69 @@ export class FormInstanceComponent implements OnInit {
     this.getOrgunits(selected);
   }
 
-  getOrgunits(orgunitid: number) {
-    this.http.get<any>(environment.url + '/api/orgunits?parentid=' + orgunitid + '&pageSize=10000&page=1').subscribe((d: any) => {
-      const data = d.data?.data || [];
-      if (data.length > 0) {
-        const lvl = data[0].level;
-        this.orgunits[lvl - 1] = data;
-        for (var i = lvl; i < 3; i++) {
-          this.orgunits[i] = [];
+  getOrgunits(orgunitid?: number) {
+    console.log('Loading orgunits with parentId:', orgunitid);
+
+    // Sử dụng ApiService thay vì gọi trực tiếp HTTP
+    this.apiService.getOrgUnits(orgunitid).subscribe({
+      next: (d: any) => {
+        console.log('API Response for orgunits:', d);
+        const allData = d.data?.data || [];
+        console.log('All orgunits data received:', allData.length, 'records');
+
+        if (allData.length > 0) {
+          // Nếu không có parentid, chỉ lấy records level = 1 (tỉnh)
+          if (!orgunitid || orgunitid === 0) {
+            const provinces = allData.filter((item: any) => item.level === 1);
+            console.log('Filtered provinces (level=1):', provinces.length, 'records');
+            this.orgunits[0] = provinces;
+            // Clear các cấp dưới khi load tỉnh
+            this.orgunits[1] = [];
+            this.orgunits[2] = [];
+          } else {
+            // Nếu có parentid, lấy tất cả records (sẽ được filter theo parentid bởi backend)
+            // Và lưu vào đúng mảng dựa trên level, nhưng không reset mảng cấp trên
+
+            // Xác định cấp độ hiện tại dựa trên level của records trả về
+            const currentLevel = allData[0]?.level || 2;
+
+            // Clear mảng cấp hiện tại trước khi thêm dữ liệu mới
+            this.orgunits[currentLevel - 1] = [];
+
+            // Lưu vào đúng mảng dựa trên level
+            allData.forEach((item: any) => {
+              const level = item.level;
+              if (level >= 1 && level <= 3) {
+                this.orgunits[level - 1].push(item);
+              }
+            });
+
+            console.log('Filtered by level - Provinces:', this.orgunits[0].length,
+                       'Districts:', this.orgunits[1].length,
+                       'Wards:', this.orgunits[2].length);
+
+            // Clear các cấp dưới level hiện tại
+            for (let i = currentLevel; i < 3; i++) {
+              if (i > currentLevel - 1) { // Không clear mảng cấp trên và cấp hiện tại
+                this.orgunits[i] = [];
+              }
+            }
+          }
         }
+
+        console.log('Final orgunits array:', this.orgunits);
+      },
+      error: (error: any) => {
+        console.error('Error loading orgunits:', error);
+        // Khi có lỗi, chỉ clear các mảng cấp dưới, không clear tỉnh
+        this.orgunits[1] = [];
+        this.orgunits[2] = [];
+        Swal.fire({
+          title: 'Lỗi tải dữ liệu',
+          text: 'Không thể tải danh sách đơn vị hành chính',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
       }
     });
   }

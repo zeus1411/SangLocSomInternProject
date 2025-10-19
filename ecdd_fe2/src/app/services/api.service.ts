@@ -158,7 +158,7 @@ export class ApiService {
 
   // OrgUnit APIs
   getOrgUnits(parentId?: number): Observable<any> {
-    let url = `${environment.url}/api/orgunits?pageSize=10000&page=1`;
+    let url = `${environment.url}/api/orgunits?limit=1000`;
     if (parentId) {
       url += `&parentid=${parentId}`;
     }
