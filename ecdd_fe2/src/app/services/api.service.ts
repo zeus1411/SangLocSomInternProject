@@ -95,67 +95,65 @@ export class ApiService {
     return this.http.get(`${environment.url}/api/programs/bycode/${code}`);
   }
 
-  getPrograms(): Observable<any> {
-    return this.http.get(`${environment.url}/api/programs`);
-  }
+  // getPrograms(): Observable<any> {
+  //   return this.http.get(`${environment.url}/api/programs`);
+  // }
 
-  // Form APIs
-  getFormById(id: number): Observable<any> {
-    return this.http.get(`${environment.url}/api/forms/${id}`);
-  }
+  // // Form APIs
+  // getFormById(id: number): Observable<any> {
+  //   return this.http.get(`${environment.url}/api/forms/${id}`);
+  // }
 
   getFormStructure(id: number): Observable<any> {
     return this.http.get(`${environment.url}/api/forms/${id}`);
   }
 
   // Form Instance APIs
-  getFormInstance(id: number): Observable<any> {
-    return this.http.get(`${environment.url}/api/forminstances/${id}`);
-  }
+  // getFormInstance(id: number): Observable<any> {
+  //   return this.http.get(`${environment.url}/api/forminstances/${id}`);
+  // }
 
-  getFormInstanceValues(formInstanceId: number): Observable<any> {
-    return this.http.get(`${environment.url}/api/forminstances/${formInstanceId}/value?pageSize=1000`);
-  }
+  // getFormInstanceValues(formInstanceId: number): Observable<any> {
+  //   return this.http.get(`${environment.url}/api/forminstances/${formInstanceId}/value?pageSize=1000`);
+  // }
 
-  createFormInstance(data: any): Observable<any> {
-    return this.http.post(`${environment.url}/api/forminstances`, data, {
-      headers: this.getAuthHeaders()
-    });
-  }
+  // createFormInstance(data: any): Observable<any> {
+  //   return this.http.post(`${environment.url}/api/forminstances`, data, {
+  //     headers: this.getAuthHeaders()
+  //   });
+  // }
 
-  updateFormInstance(id: number, data: any): Observable<any> {
-    return this.http.put(`${environment.url}/api/forminstances/${id}`, data, {
-      headers: this.getAuthHeaders()
-    });
-  }
+  // updateFormInstance(id: number, data: any): Observable<any> {
+  //   return this.http.put(`${environment.url}/api/forminstances/${id}`, data, {
+  //     headers: this.getAuthHeaders()
+  //   });
+  // }
 
-  getFormInstances(filters?: any): Observable<any> {
-    let params = '';
-    if (filters) {
-      const queryParams = new URLSearchParams();
-      Object.keys(filters).forEach(key => {
-        if (filters[key] !== null && filters[key] !== undefined) {
-          queryParams.append(key, filters[key].toString());
-        }
-      });
-      params = '?' + queryParams.toString();
-    }
-    return this.http.get(`${environment.url}/api/forminstances${params}`);
-  }
+  // getFormInstances(filters?: any): Observable<any> {
+  //   let params = '';
+  //   if (filters) {
+  //     const queryParams = new URLSearchParams();
+  //     Object.keys(filters).forEach(key => {
+  //       if (filters[key] !== null && filters[key] !== undefined) {
+  //         queryParams.append(key, filters[key].toString());
+  //       }
+  //     });
+  //     params = '?' + queryParams.toString();
+  //   }
+  //   return this.http.get(`${environment.url}/api/forminstances${params}`);
+  // }
 
   // Period APIs
-  getCurrentPeriod(): Observable<any> {
-    return this.http.get(`${environment.url}/api/periods/current?pageSize=20&page=1`);
-  }
+  // getCurrentPeriod(): Observable<any> {
+  //   return this.http.get(`${environment.url}/api/periods/current?pageSize=20&page=1`);
+  // }
 
-  getPeriods(): Observable<any> {
-    return this.http.get(`${environment.url}/api/periods`);
-  }
+  // getPeriods(): Observable<any> {
+  //   return this.http.get(`${environment.url}/api/periods`);
+  // }
 
   // QUAN TRỌNG: Method mới để lấy active periods
   getActivePeriod(): Observable<any> {
-    // Gọi đến endpoint /api/periods/active hoặc filter isactive=true
-    // Tùy vào backend implementation
     return this.http.get(`${environment.url}/api/periods/active`);
   }
 
@@ -168,21 +166,21 @@ export class ApiService {
     return this.http.get(url);
   }
 
-  getOrgUnitTree(): Observable<any> {
-    return this.http.get(`${environment.url}/api/orgunits/tree`);
-  }
+  // getOrgUnitTree(): Observable<any> {
+  //   return this.http.get(`${environment.url}/api/orgunits/tree`);
+  // }
 
-  // DataElement APIs
-  getDataElements(): Observable<any> {
-    return this.http.get(`${environment.url}/api/dataelements`);
-  }
+  // // DataElement APIs
+  // getDataElements(): Observable<any> {
+  //   return this.http.get(`${environment.url}/api/dataelements`);
+  // }
 
-  // Dataset APIs
-  getDatasets(): Observable<any> {
-    return this.http.get(`${environment.url}/api/datasets`);
-  }
+  // // Dataset APIs
+  // getDatasets(): Observable<any> {
+  //   return this.http.get(`${environment.url}/api/datasets`);
+  // }
 
-  getDatasetWithMembers(id: number): Observable<any> {
-    return this.http.get(`${environment.url}/api/datasets/${id}/members`);
-  }
+  // getDatasetWithMembers(id: number): Observable<any> {
+  //   return this.http.get(`${environment.url}/api/datasets/${id}/members`);
+  // }
 }
