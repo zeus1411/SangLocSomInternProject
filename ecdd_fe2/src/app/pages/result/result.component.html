@@ -1,67 +1,63 @@
+<!-- Thông tin trẻ -->
+<div class="row" *ngIf="person">
+  <div class="col-lg-2 aos-init aos-animate" data-aos="fade-right">
+    <img *ngIf="person.gender == 0" src="assets/img/girl.png" width="120px" class="float-right pull-right" alt="">
+    <img *ngIf="person.gender == 1" src="assets/img/boy.png" width="120px" class="float-right pull-right" alt="">
+  </div>
+  <div class="col-lg-8 pt-4 pt-lg-0 content aos-init aos-animate" data-aos="fade-left">
+    <h3>{{person.name}}</h3>
 
-    
-    
-    
-                <div class="row" *ngIf="person">
-                  <div class="col-lg-2 aos-init aos-animate" data-aos="fade-right">
-                    <img *ngIf="person.gender == 0 " src="assets/img/girl.png" width="120px" class="float-right pull-right" alt="">
-                    <img *ngIf="person.gender == 1 " src="assets/img/boy.png" width="120px" class="float-right pull-right" alt="">
-                  </div>
-                  <div class="col-lg-8 pt-4 pt-lg-0 content aos-init aos-animate" data-aos="fade-left">
-                    <h3>{{person.name}}</h3>
-                
-                    <div class="row">
-                      <div class="col-lg-12">
-                        <ul>
-                          <li><i class="bi bi-chevron-right"></i> <strong>Ngày sinh:</strong> <span>{{person.birthday | date: 'dd/MM/yyyy ' }}</span></li>
-                          <li><i class="bi bi-chevron-right"></i> <strong>Tuổi:</strong> <span> {{person.months}} tháng</span></li>
-                          <li><i class="bi bi-chevron-right"></i> <strong>Giới tính:</strong> <span> {{person.gender == 1 ? "Nam" : "Nữ"}}</span></li>
-                          <li><i class="bi bi-chevron-right"></i> <strong>Phụ huynh:</strong> <span> {{person.parentname}}</span></li>
-                          <li><i class="bi bi-chevron-right"></i> <strong>Số điện thoại:</strong> <span> {{person.phone}}</span></li>
-                          <li><i class="bi bi-chevron-right"></i> <strong>Địa chỉ:</strong> <span> {{person.address}}</span></li>
-                          <li><i class="bi bi-chevron-right"></i> <strong>Người sàng lọc:</strong> <span> {{person.surveyby}}</span></li>
-                          <li><i class="bi bi-chevron-right"></i> <strong>Địa điểm sàng lọc:</strong> <span> {{person.surveyplace}}</span></li>
-                        </ul>
-                      </div>
-                    </div>
-              
-                  </div>
-                </div>
+    <div class="row">
+      <div class="col-lg-12">
+        <ul>
+          <li><i class="bi bi-chevron-right"></i> <strong>Ngày sinh:</strong> <span>{{person.birthday | date: 'dd/MM/yyyy'}}</span></li>
+          <li><i class="bi bi-chevron-right"></i> <strong>Tuổi:</strong> <span>{{person.months}} tháng</span></li>
+          <li><i class="bi bi-chevron-right"></i> <strong>Giới tính:</strong> <span>{{person.gender == 1 ? "Nam" : "Nữ"}}</span></li>
+          <li><i class="bi bi-chevron-right"></i> <strong>Phụ huynh:</strong> <span>{{person.parentname}}</span></li>
+          <li><i class="bi bi-chevron-right"></i> <strong>Số điện thoại:</strong> <span>{{person.phone}}</span></li>
+          <li><i class="bi bi-chevron-right"></i> <strong>Địa chỉ:</strong> <span>{{person.address}}</span></li>
+          <li><i class="bi bi-chevron-right"></i> <strong>Người sàng lọc:</strong> <span>{{person.surveyby}}</span></li>
+          <li><i class="bi bi-chevron-right"></i> <strong>Địa điểm sàng lọc:</strong> <span>{{person.surveyplace}}</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
 
-    <figure class="highcharts-figure">
-      
-        <div id="container"></div>
+<!-- Biểu đồ Radar -->
+<figure class="highcharts-figure">
+  <div id="container"></div>
 
-      <p class="highcharts-description">
-        <span>
-            <strong>Đánh giá: {{form.explain}}</strong> 
-            
-        </span>
-      </p>
+  <!-- Đánh giá chung -->
+  <p class="highcharts-description">
+    <span>
+      <strong>Đánh giá: {{form.explain}}</strong>
+    </span>
+  </p>
 
-      <p *ngIf="form.alertyn == false  && form.warningyn == true">
-        
-        <strong>
-        Tuy nhiên, có một số kỹ năng trẻ chưa làm được so với các trẻ khác trong cùng độ tuổi như liệt kê dưới đây,
-        gia đình cần lưu ý quan sát, tiếp tục theo dõi và thực hiện sàng lọc ở giai đoạn phát triển tiếp theo
-        </strong> 
-      </p>
+  <!-- Warning message nếu có -->
+  <p *ngIf="form.alertyn == false && form.warningyn == true">
+    <strong>
+      Tuy nhiên, có một số kỹ năng trẻ chưa làm được so với các trẻ khác trong cùng độ tuổi như liệt kê dưới đây,
+      gia đình cần lưu ý quan sát, tiếp tục theo dõi và thực hiện sàng lọc ở giai đoạn phát triển tiếp theo
+    </strong>
+  </p>
 
-      <p *ngIf="form.alertyn || form.warningyn">
-        <ng-container *ngFor="let fm of form.Formmembers">
-            <span *ngIf="fm.Dataset.alertyn || fm.Dataset.warningyn ">
-                <br/>
-                <strong>- {{fm.Dataset.name}}</strong>
-                <ng-container *ngFor="let dsm of fm.Dataset.Datasetmembers">
-                <span *ngIf="dsm.nowscore !== dsm.score ">
-                    <BR/>
-                  <i>+ {{dsm.Dataelement.name}} --> <app-render-value [el]="dsm"></app-render-value></i>
-                </span>
-                 
-                </ng-container>
-            </span>
-
+  <!-- Chi tiết các câu hỏi có cảnh báo/warning - FORMAT INLINE -->
+  <p *ngIf="form.alertyn || form.warningyn" style="line-height: 1.8;">
+    <ng-container *ngFor="let fm of form.formMembers">
+      <!-- Chỉ hiển thị Dataset có cảnh báo hoặc warning -->
+      <ng-container *ngIf="fm.dataset.alertyn || fm.dataset.warningyn">
+        <br/>
+        <strong>- {{fm.dataset.name}}</strong>
+        <ng-container *ngFor="let dsm of fm.dataset.datasetMembers">
+          <!-- Chỉ hiển thị câu hỏi có điểm khác với điểm chuẩn -->
+          <span *ngIf="dsm.nowscore !== dsm.score">
+            <br/>
+            <i>+ {{dsm.dataelement.name}} --> <app-render-value [el]="dsm"></app-render-value></i>
+          </span>
         </ng-container>
-        
-      </p>
-  </figure>
+      </ng-container>
+    </ng-container>
+  </p>
+</figure>

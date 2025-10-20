@@ -1,0 +1,115 @@
+.highcharts-figure {
+  margin-top: 30px;
+  margin-bottom: 30px;
+
+  #container {
+    min-height: 400px;
+    margin-bottom: 20px;
+  }
+
+  .highcharts-description {
+    font-size: 1.1em;
+    line-height: 1.8;
+    margin-bottom: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-left: 4px solid #0d6efd;
+    border-radius: 4px;
+
+    strong {
+      color: #212529;
+      font-weight: 600;
+    }
+  }
+
+  // Paragraph chứa kết quả chi tiết
+  > p {
+    margin-top: 15px;
+    line-height: 1.8;
+    font-size: 1em;
+
+    // Warning message phía trên
+    > strong:first-child {
+      color: #dc3545;
+      display: block;
+      margin-bottom: 15px;
+      padding: 10px;
+      background-color: #fff3cd;
+      border-left: 4px solid #ffc107;
+      border-radius: 4px;
+    }
+
+    // Tên lĩnh vực (Dataset name)
+    > ng-container > strong {
+      color: #0d6efd;
+      font-weight: 600;
+      font-size: 1.05em;
+    }
+
+    // Các câu hỏi (inline)
+    i {
+      font-style: normal;
+      color: #495057;
+      
+      app-render-value {
+        color: #212529;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// Thông tin trẻ
+.row {
+  margin-bottom: 30px;
+
+  ul {
+    list-style: none;
+    padding: 0;
+
+    li {
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+      
+      &:last-child {
+        border-bottom: none;
+      }
+
+      i {
+        color: #0d6efd;
+        margin-right: 8px;
+        font-size: 0.9em;
+      }
+
+      strong {
+        color: #495057;
+        margin-right: 5px;
+      }
+
+      span {
+        color: #212529;
+      }
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .highcharts-figure {
+    #container {
+      min-height: 300px;
+    }
+
+    .highcharts-description,
+    > p {
+      font-size: 0.95em;
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .highcharts-figure {
+    page-break-inside: avoid;
+  }
+}

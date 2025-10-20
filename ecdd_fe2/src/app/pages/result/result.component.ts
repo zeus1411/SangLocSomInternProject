@@ -18,81 +18,79 @@ export class ResultComponent implements OnInit {
   @Input() form: any;
   @Input() person: any;
 
-  public isloading : boolean = false;
+  public isloading: boolean = false;
 
-  constructor(private _router: Router, private route: ActivatedRoute, private http: HttpClient) {
-
+  constructor(
+    private _router: Router, 
+    private route: ActivatedRoute, 
+    private http: HttpClient
+  ) {
     this._router.routeReuseStrategy.shouldReuseRoute = () => {
       return false;
     };
   }
 
-
   ngOnInit(): void {
-    //calculate
+    // Tính toán điểm và cảnh báo
     this.calculate();
 
-
+    // Chuẩn bị dữ liệu cho biểu đồ
     let datas = [];
     let cats = [];
-    for (let fmember of this.form.Formmembers) {
-      cats.push(fmember.Dataset.name);
-      datas.push((fmember.Dataset.nowscore / fmember.Dataset.totalscore) * 100);
-
+    
+    // Sử dụng formMembers (lowercase) theo API
+    const formMembers = this.form.formMembers || this.form.Formmembers || [];
+    
+    for (let fmember of formMembers) {
+      const dataset = fmember.dataset || fmember.Dataset;
+      cats.push(dataset.name);
+      // Tính phần trăm điểm đạt được
+      const percentage = (dataset.nowscore / dataset.totalscore) * 100;
+      datas.push(percentage);
     }
 
-
+    // Vẽ biểu đồ Radar (Spider Chart)
     const chart = Highcharts.chart('container', {
-
       chart: {
         polar: true,
         type: 'line'
       },
-
       accessibility: {
         description: ''
       },
-
       title: {
         text: this.form.name,
         x: -80
       },
-
       pane: {
         size: '80%'
       },
-
       xAxis: {
         categories: cats,
         tickmarkPlacement: 'on',
         lineWidth: 0
       },
-
       yAxis: {
         gridLineInterpolation: 'polygon',
         lineWidth: 0,
         min: 0,
         max: 100
       },
-
       tooltip: {
         shared: true,
         pointFormat: '<span style="color:{series.color}">{series.name}: <b>{point.y:,.0f} %</b><br/>'
       },
-
       legend: {
         align: 'right',
         verticalAlign: 'middle',
         layout: 'vertical'
       },
-
       series: [{
         type: "area",
         name: 'Kết quả đánh giá',
         data: datas,
         pointPlacement: 'on'
       }],
-
       responsive: {
         rules: [{
           condition: {
@@ -110,16 +108,16 @@ export class ResultComponent implements OnInit {
           }
         }]
       }
-
     });
 
+    // Đánh dấu các điểm có cảnh báo bằng màu khác
     let i = 0;
-    for (let fmember of this.form.Formmembers) {
-      if (fmember.Dataset.alertyn === true) {
+    for (let fmember of formMembers) {
+      const dataset = fmember.dataset || fmember.Dataset;
+      if (dataset.alertyn === true) {
         chart.series[0].data[i].update({
           marker: {
             radius: 8,
-            //symbol: 'diamond',
             fillColor: '#FFC4A4',
             states: {
               hover: {
@@ -132,58 +130,56 @@ export class ResultComponent implements OnInit {
       }
       i++;
     }
-
-    // if (this.person != null) {
-    //   this.saveResult();
-    // }
-
-
   }
 
+  /**
+   * Tính toán điểm và xác định cảnh báo cho form
+   */
   calculate() {
-
-    //cảnh báo chung cho form
+    // Reset cảnh báo chung cho form
     this.form.alertyn = false;
     this.form.warningyn = false;
 
-    //tính điểm cho từng dataset
-    for (let fmember of this.form.Formmembers) {
+    // Sử dụng formMembers (lowercase) theo API
+    const formMembers = this.form.formMembers || this.form.Formmembers || [];
 
-      //điểm khảo sát
-      fmember.Dataset.nowscore = 0.0;
+    // Tính điểm cho từng dataset (lĩnh vực)
+    for (let fmember of formMembers) {
+      const dataset = fmember.dataset || fmember.Dataset;
+      
+      // Reset điểm và cảnh báo của dataset
+      dataset.nowscore = 0.0;
+      dataset.totalscore = 0.0;
+      dataset.alertyn = false;
+      dataset.warningyn = false;
 
-      //tổng điểm
-      fmember.Dataset.totalscore = 0.0;
+      const datasetMembers = dataset.datasetMembers || dataset.Datasetmembers || [];
 
-      //cảnh báo dataset
-      fmember.Dataset.alertyn = false;
+      // Tính tổng điểm từng câu hỏi trong dataset
+      for (let dsm of datasetMembers) {
+        dataset.nowscore += parseFloat(dsm.nowscore || 0);
+        dataset.totalscore += parseFloat(dsm.score || 0);
 
-      for (let dsm of fmember.Dataset.Datasetmembers) {
-
-        fmember.Dataset.nowscore += parseFloat(dsm.nowscore);
-        fmember.Dataset.totalscore += parseFloat(dsm.score);
-
+        // Nếu điểm thực tế khác điểm chuẩn => có warning
         if (dsm.nowscore != dsm.score) {
-
           this.form.warningyn = true;
-          fmember.Dataset.warningyn = true;
+          dataset.warningyn = true;
         }
-
       }
 
-      //cảnh báo khi điểm của dataset nằm ngoài khoảng minscore - maxscore
-      if (fmember.Dataset.nowscore < parseFloat(fmember.Dataset.minscore) || fmember.Dataset.nowscore > parseFloat(fmember.Dataset.maxscore)) {
-        fmember.Dataset.alertyn = true;
-
+      // Kiểm tra cảnh báo: điểm nằm ngoài khoảng min-max
+      const minScore = parseFloat(dataset.minscore || 0);
+      const maxScore = parseFloat(dataset.maxscore || 999);
+      
+      if (dataset.nowscore < minScore || dataset.nowscore > maxScore) {
+        dataset.alertyn = true;
         this.form.alertyn = true;
 
-        //nếu dataset có cảnh báo, thiết lập cảnh báo của form (form.explain) là câu cảnh báo của dataset (dataset.explain)
-        if (this.form.explain !== fmember.Dataset.explain) {
-          this.form.explain = fmember.Dataset.explain;
+        // Nếu dataset có cảnh báo, sử dụng explain của dataset đó
+        if (this.form.explain !== dataset.explain) {
+          this.form.explain = dataset.explain;
         }
       }
-
     }
   }
-
 }

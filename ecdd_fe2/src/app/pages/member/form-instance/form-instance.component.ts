@@ -67,7 +67,6 @@ export class FormInstanceComponent implements OnInit {
       this.dpSize = 1;
     }
 
-    // Get current user from auth service
     this.user = this.authService.getCurrentUser();
 
     if (this.user) {
@@ -95,122 +94,191 @@ export class FormInstanceComponent implements OnInit {
       }
     });
 
-    // FIX: Load Tỉnh (provinces) ngay từ đầu - KHÔNG truyền tham số
+    // Load Tỉnh ngay từ đầu
     this.loadProvinces();
 
     try {
       const id = this.route.snapshot.paramMap.get('id');
       
       if (id && id !== '') {
-        // EDIT MODE: Load existing form instance
-        console.log('Loading existing form instance:', id);
-        this.http.get<any>(environment.url + '/api/forminstances/' + id).subscribe({
-          next: (d: any) => {
-            this.person = d.data;
-            this.person.periodid = this.person.Period;
-            this.periods.push(this.person.Period);
-
-            const bod = new Date(this.person.birthday);
-            this.person.birthday = new NgbDate(bod.getFullYear(), bod.getMonth() + 1, bod.getDate());
-
-            // Load cascade: Tỉnh -> Huyện -> Xã
-            if (this.person.Orgunit?.Parent?.parentid) {
-              this.person.tinh = this.person.Orgunit.Parent.parentid;
-              this.loadDistricts(this.person.tinh).then(() => {
-                if (this.person.Orgunit?.parentid) {
-                  this.person.huyen = this.person.Orgunit.parentid;
-                  this.loadWards(this.person.huyen);
-                }
-              });
-            }
-            
-            console.log('Loaded person data:', this.person);
-          },
-          error: (error) => {
-            console.error('Error loading form instance:', error);
-            Swal.fire({
-              title: 'Lỗi tải dữ liệu!',
-              text: 'Không thể tải thông tin phiếu sàng lọc.',
-              icon: 'error',
-              confirmButtonText: 'OK'
-            }).then(() => {
-              this._router.navigate(['/member/results']);
-            });
-          }
-        });
+        // EDIT MODE
+        console.log('🔄 EDIT MODE - Loading form instance:', id);
+        this.loadFormInstanceForEdit(id);
       } else {
-        // CREATE MODE: Get active period
-        console.log('Create mode: Loading active periods');
-        
-        this.apiService.getActivePeriod().subscribe({
-          next: (d: any) => {
-            console.log('API Response for active periods:', d);
-            
-            let periodsData = [];
-            
-            if (d.data) {
-              if (Array.isArray(d.data)) {
-                periodsData = d.data;
-              } else if (d.data.data && Array.isArray(d.data.data)) {
-                periodsData = d.data.data;
-              } else if (d.data.rows && Array.isArray(d.data.rows)) {
-                periodsData = d.data.rows;
-              } else if (d.data.id) {
-                periodsData = [d.data];
-              }
-            } else if (Array.isArray(d)) {
-              periodsData = d;
-            }
-
-            console.log('Processed periods data:', periodsData);
-
-            const activePeriods = periodsData.filter((p: any) => p.isactive === true);
-            console.log('Active periods:', activePeriods);
-
-            if (activePeriods.length > 0) {
-              this.periods = activePeriods;
-              this.person.periodid = this.periods[0];
-              console.log('Selected period:', this.person.periodid);
-            } else {
-              console.warn('No active periods found');
-              Swal.fire({
-                title: 'Hiện tại chưa có kỳ khảo sát nào được mở!',
-                text: 'Vui lòng liên hệ quản trị viên để kích hoạt kỳ khảo sát.',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-              }).then((result) => {
-                this._router.navigate(['/member/results']);
-              });
-            }
-          },
-          error: (error) => {
-            console.error('Error loading active periods:', error);
-            Swal.fire({
-              title: 'Lỗi tải dữ liệu!',
-              text: 'Không thể tải thông tin kỳ khảo sát. Vui lòng thử lại sau.',
-              icon: 'error',
-              confirmButtonText: 'OK'
-            }).then((result) => {
-              this._router.navigate(['/member/results']);
-            });
-          }
-        });
+        // CREATE MODE
+        console.log('➕ CREATE MODE - Loading active periods');
+        this.loadActivePeriod();
       }
     } catch (error) {
       console.error('Error in ngOnInit:', error);
     }
   }
 
-  // FIX: Load Tỉnh (Level 1) - Gọi API không có tham số, sau đó filter level 1
+  // FIX: Load form instance với xử lý đúng cấu trúc Orgunit
+  async loadFormInstanceForEdit(id: string) {
+    try {
+      const response = await this.http.get<any>(environment.url + '/api/forminstances/' + id).toPromise();
+      const data = response.data;
+      
+      console.log('📦 Raw form instance data:', data);
+      
+      // Set person data
+      this.person = { ...data };
+      
+      // FIX: Set Period - Sequelize trả về với capital letter
+      if (data.Period) {
+        this.person.periodid = data.Period;
+        this.periods = [data.Period];
+        console.log('📅 Loaded period:', data.Period);
+      } else if (data.period) {
+        // Fallback lowercase
+        this.person.periodid = data.period;
+        this.periods = [data.period];
+        console.log('📅 Loaded period (lowercase):', data.period);
+      } else if (data.periodid) {
+        // Fallback: Load period by ID
+        console.warn('⚠️ No period object, loading by ID:', data.periodid);
+        this.http.get<any>(environment.url + '/api/periods/' + data.periodid).toPromise()
+          .then((periodResponse: any) => {
+            if (periodResponse.data) {
+              this.person.periodid = periodResponse.data;
+              this.periods = [periodResponse.data];
+              console.log('📅 Loaded period from API:', periodResponse.data);
+            }
+          })
+          .catch((err) => console.error('❌ Failed to load period:', err));
+      } else {
+        console.error('❌ No period data available at all!');
+      }
+
+      // Convert birthday
+      const bod = new Date(data.birthday);
+      this.person.birthday = new NgbDate(bod.getFullYear(), bod.getMonth() + 1, bod.getDate());
+      console.log('🎂 Converted birthday:', this.person.birthday);
+
+      // FIX: Xử lý Orgunit với cấu trúc đúng
+      if (data.Orgunit) {
+        console.log('🏘️ Full Orgunit structure:', JSON.stringify(data.Orgunit, null, 2));
+        
+        // Xã (Level 3)
+        const xaId = data.orgunitid;
+        const xa = data.Orgunit;
+        console.log('📍 Xã:', { id: xaId, name: xa.name, level: xa.level, parentid: xa.parentid });
+        
+        // Huyện (Level 2) - từ Xã.Parent
+        if (xa.Parent) {
+          const huyen = xa.Parent;
+          const huyenId = huyen.id;
+          console.log('📍 Huyện:', { id: huyenId, name: huyen.name, level: huyen.level, parentid: huyen.parentid });
+          
+          // Tỉnh (Level 1) - từ Huyện.Parent
+          if (huyen.Parent) {
+            const tinh = huyen.Parent;
+            const tinhId = tinh.id;
+            console.log('📍 Tỉnh:', { id: tinhId, name: tinh.name, level: tinh.level });
+            
+            // Set values và load cascade
+            this.person.tinh = tinhId;
+            this.person.huyen = huyenId;
+            this.person.orgunitid = xaId;
+            
+            console.log('🔄 Loading cascade: Tỉnh', tinhId, '→ Huyện', huyenId, '→ Xã', xaId);
+            
+            // Load Districts
+            await this.loadDistricts(tinhId);
+            console.log('✅ Loaded', this.orgunits[1].length, 'districts');
+            
+            // Load Wards
+            await this.loadWards(huyenId);
+            console.log('✅ Loaded', this.orgunits[2].length, 'wards');
+            
+            // Verify selected values
+            console.log('✅ Final selection:', {
+              tinh: this.person.tinh,
+              huyen: this.person.huyen,
+              orgunitid: this.person.orgunitid
+            });
+          } else {
+            console.warn('⚠️ Missing Huyện.Parent (Tỉnh)');
+          }
+        } else {
+          console.warn('⚠️ Missing Xã.Parent (Huyện)');
+        }
+      } else {
+        console.warn('⚠️ No Orgunit data found');
+      }
+      
+      console.log('✅ Final person data:', this.person);
+      
+    } catch (error) {
+      console.error('❌ Error loading form instance:', error);
+      Swal.fire({
+        title: 'Lỗi tải dữ liệu!',
+        text: 'Không thể tải thông tin phiếu sàng lọc.',
+        icon: 'error',
+        confirmButtonText: 'OK'
+      }).then(() => {
+        this._router.navigate(['/member/results']);
+      });
+    }
+  }
+
+  loadActivePeriod() {
+    this.apiService.getActivePeriod().subscribe({
+      next: (d: any) => {
+        console.log('API Response for active periods:', d);
+        
+        let periodsData = [];
+        
+        if (d.data) {
+          if (Array.isArray(d.data)) {
+            periodsData = d.data;
+          } else if (d.data.data && Array.isArray(d.data.data)) {
+            periodsData = d.data.data;
+          } else if (d.data.rows && Array.isArray(d.data.rows)) {
+            periodsData = d.data.rows;
+          } else if (d.data.id) {
+            periodsData = [d.data];
+          }
+        } else if (Array.isArray(d)) {
+          periodsData = d;
+        }
+
+        const activePeriods = periodsData.filter((p: any) => p.isactive === true);
+
+        if (activePeriods.length > 0) {
+          this.periods = activePeriods;
+          this.person.periodid = this.periods[0];
+        } else {
+          Swal.fire({
+            title: 'Hiện tại chưa có kỳ khảo sát nào được mở!',
+            text: 'Vui lòng liên hệ quản trị viên để kích hoạt kỳ khảo sát.',
+            icon: 'warning',
+            confirmButtonText: 'OK'
+          }).then((result) => {
+            this._router.navigate(['/member/results']);
+          });
+        }
+      },
+      error: (error) => {
+        console.error('Error loading active periods:', error);
+        Swal.fire({
+          title: 'Lỗi tải dữ liệu!',
+          text: 'Không thể tải thông tin kỳ khảo sát.',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        }).then((result) => {
+          this._router.navigate(['/member/results']);
+        });
+      }
+    });
+  }
+
   loadProvinces() {
-    console.log('Loading provinces (level 1)...');
+    console.log('📍 Loading provinces (level 1)...');
     
-    // Gọi API trực tiếp không qua apiService để có nhiều quyền kiểm soát
     this.http.get<any>(environment.url + '/api/orgunits?limit=1000').subscribe({
       next: (d: any) => {
-        console.log('Raw API response for provinces:', d);
-        
-        // Xử lý nhiều format response
         let allData = [];
         if (d.data) {
           if (Array.isArray(d.data)) {
@@ -224,30 +292,22 @@ export class FormInstanceComponent implements OnInit {
           allData = d;
         }
 
-        console.log('All orgunits data:', allData.length);
-
-        // Filter chỉ lấy level 1 (Tỉnh)
         this.orgunits[0] = allData.filter((item: any) => item.level === 1);
-        console.log('Loaded provinces:', this.orgunits[0].length, this.orgunits[0]);
+        console.log('✅ Loaded', this.orgunits[0].length, 'provinces:', this.orgunits[0]);
       },
       error: (error: any) => {
-        console.error('Error loading provinces:', error);
+        console.error('❌ Error loading provinces:', error);
         this.orgunits[0] = [];
       }
     });
   }
 
-  // FIX: Load Huyện (Level 2) theo Tỉnh
   loadDistricts(provinceId: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      console.log('Loading districts for province:', provinceId);
+      console.log('📍 Loading districts for province:', provinceId);
       
-      // Gọi API trực tiếp với parentid
       this.http.get<any>(environment.url + `/api/orgunits?limit=1000&parentid=${provinceId}`).subscribe({
         next: (d: any) => {
-          console.log('Raw API response for districts:', d);
-          
-          // Xử lý nhiều format response
           let allData = [];
           if (d.data) {
             if (Array.isArray(d.data)) {
@@ -261,38 +321,28 @@ export class FormInstanceComponent implements OnInit {
             allData = d;
           }
 
-          // Filter level 2 (Huyện) và parentid khớp
           this.orgunits[1] = allData.filter((item: any) => 
             item.level === 2 && item.parentid == provinceId
           );
-          this.orgunits[2] = []; // Clear Xã
-          this.person.huyen = 0;
-          this.person.orgunitid = 0;
           
-          console.log('Loaded districts:', this.orgunits[1].length, this.orgunits[1]);
+          console.log('✅ Loaded', this.orgunits[1].length, 'districts:', this.orgunits[1]);
           resolve();
         },
         error: (error: any) => {
-          console.error('Error loading districts:', error);
+          console.error('❌ Error loading districts:', error);
           this.orgunits[1] = [];
-          this.orgunits[2] = [];
           reject(error);
         }
       });
     });
   }
 
-  // FIX: Load Xã (Level 3) theo Huyện
   loadWards(districtId: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      console.log('Loading wards for district:', districtId);
+      console.log('📍 Loading wards for district:', districtId);
       
-      // Gọi API trực tiếp với parentid
       this.http.get<any>(environment.url + `/api/orgunits?limit=1000&parentid=${districtId}`).subscribe({
         next: (d: any) => {
-          console.log('Raw API response for wards:', d);
-          
-          // Xử lý nhiều format response
           let allData = [];
           if (d.data) {
             if (Array.isArray(d.data)) {
@@ -306,17 +356,15 @@ export class FormInstanceComponent implements OnInit {
             allData = d;
           }
 
-          // Filter level 3 (Xã) và parentid khớp
           this.orgunits[2] = allData.filter((item: any) => 
             item.level === 3 && item.parentid == districtId
           );
-          this.person.orgunitid = 0; // Reset Xã selection
           
-          console.log('Loaded wards:', this.orgunits[2].length, this.orgunits[2]);
+          console.log('✅ Loaded', this.orgunits[2].length, 'wards:', this.orgunits[2]);
           resolve();
         },
         error: (error: any) => {
-          console.error('Error loading wards:', error);
+          console.error('❌ Error loading wards:', error);
           this.orgunits[2] = [];
           reject(error);
         }
@@ -324,24 +372,19 @@ export class FormInstanceComponent implements OnInit {
     });
   }
 
-  // FIX: Event handler khi chọn Tỉnh - parse về number và kiểm tra kỹ
   onProvinceChange(event: Event) {
     const selected = (event.target as HTMLSelectElement).value;
-    console.log('Province changed to:', selected, 'type:', typeof selected);
+    console.log('Province changed to:', selected);
     
     if (selected && selected !== '0') {
       const provinceId = parseInt(selected, 10);
-      console.log('Parsed province ID:', provinceId);
       
       if (!isNaN(provinceId) && provinceId > 0) {
         this.person.tinh = provinceId;
-        this.loadDistricts(provinceId);
-      } else {
-        console.error('Invalid province ID:', selected);
-        this.orgunits[1] = [];
         this.orgunits[2] = [];
         this.person.huyen = 0;
         this.person.orgunitid = 0;
+        this.loadDistricts(provinceId);
       }
     } else {
       this.orgunits[1] = [];
@@ -351,22 +394,17 @@ export class FormInstanceComponent implements OnInit {
     }
   }
 
-  // FIX: Event handler khi chọn Huyện - parse về number và kiểm tra kỹ
   onDistrictChange(event: Event) {
     const selected = (event.target as HTMLSelectElement).value;
-    console.log('District changed to:', selected, 'type:', typeof selected);
+    console.log('District changed to:', selected);
     
     if (selected && selected !== '0') {
       const districtId = parseInt(selected, 10);
-      console.log('Parsed district ID:', districtId);
       
       if (!isNaN(districtId) && districtId > 0) {
         this.person.huyen = districtId;
-        this.loadWards(districtId);
-      } else {
-        console.error('Invalid district ID:', selected);
-        this.orgunits[2] = [];
         this.person.orgunitid = 0;
+        this.loadWards(districtId);
       }
     } else {
       this.orgunits[2] = [];
@@ -374,15 +412,8 @@ export class FormInstanceComponent implements OnInit {
     }
   }
 
-  // DEPRECATED: Old method - không dùng nữa
-  onChangeOrgunit(event: Event) {
-    // Giữ lại để tương thích, nhưng không dùng
-  }
-
-  // DEPRECATED: Old method - không dùng nữa
-  getOrgunits(orgunitid?: number) {
-    // Giữ lại để tương thích, nhưng không dùng
-  }
+  onChangeOrgunit(event: Event) {}
+  getOrgunits(orgunitid?: number) {}
 
   onDateSelection(date: NgbDate) {
     this.person.months = this.monthDiff(date, this.calendar.getToday(), false);
@@ -393,13 +424,9 @@ export class FormInstanceComponent implements OnInit {
   }
 
   monthDiff(date1: NgbDate, date2: NgbDate, roundUpFractionalMonths: boolean) {
-    var startDate = date1;
-    var endDate = date2;
-    var inverse = false;
-
-    var yearsDifference = endDate.year - startDate.year;
-    var monthsDifference = endDate.month - startDate.month;
-    var daysDifference = endDate.day - startDate.day;
+    var yearsDifference = date2.year - date1.year;
+    var monthsDifference = date2.month - date1.month;
+    var daysDifference = date2.day - date1.day;
 
     var monthCorrection = 0;
     if (roundUpFractionalMonths === true && daysDifference > 0) {
@@ -409,7 +436,7 @@ export class FormInstanceComponent implements OnInit {
       monthCorrection = -1;
     }
 
-    return (inverse ? -1 : 1) * (yearsDifference * 12 + monthsDifference + monthCorrection);
+    return yearsDifference * 12 + monthsDifference + monthCorrection;
   }
 
   nextstep(i: number) {
@@ -417,8 +444,8 @@ export class FormInstanceComponent implements OnInit {
 
     if ((this.step + i) == 3) {
       success = true;
-      for (let fmember of this.form.Formmembers) {
-        for (let dsm of fmember.Dataset.Datasetmembers) {
+      for (let fmember of this.form.formMembers) {
+        for (let dsm of fmember.dataset.datasetMembers) {
           if (!dsm.hasOwnProperty("value") || dsm.value === '') {
             Swal.fire('Bạn chưa hoàn tất phiếu, vui lòng hoàn thành tất cả các câu trả lời!');
             success = false;
@@ -436,18 +463,13 @@ export class FormInstanceComponent implements OnInit {
     if ((this.step + i) == 2) {
       success = false;
 
-      // FIX: KIỂM TRA orgunitid - parse về number và validate kỹ
-      const orgunitIdStr = this.person.orgunitid;
-      const orgunitId = parseInt(orgunitIdStr, 10);
-      
-      console.log('Validating orgunitid:', orgunitIdStr, 'parsed:', orgunitId, 'type:', typeof orgunitId);
+      const orgunitId = parseInt(this.person.orgunitid, 10);
       
       if (!orgunitId || isNaN(orgunitId) || orgunitId === 0) {
         Swal.fire('Bạn chưa chọn đơn vị hành chính (Xã/Phường), vui lòng hoàn tất trước khi chuyển tiếp!');
         return;
       }
 
-      // Sử dụng filterfrom và filterto
       this.forms.forEach((form: { id: number, filterfrom: string; filterto: string; }) => {
         const from = parseInt(form.filterfrom);
         const to = parseInt(form.filterto);
@@ -461,7 +483,6 @@ export class FormInstanceComponent implements OnInit {
         return;
       }
 
-      // Get form data
       if(!this.form){
         this.forms.forEach((form: { id: number, filterfrom: string; filterto: string; }) => {
           const from = parseInt(form.filterfrom);
@@ -476,8 +497,8 @@ export class FormInstanceComponent implements OnInit {
                 this.http.get<any>(environment.url + '/api/forminstances/' + this.person.id + '/value?pageSize=1000').subscribe((response: any) => {
                   const values = response.data || [];
 
-                  this.form.Formmembers.forEach((_fmember: { Dataset: { Datasetmembers: any[]; }; }) => {
-                      _fmember.Dataset.Datasetmembers.forEach((dsmember: any) => {
+                  this.form.formMembers.forEach((_fmember: { dataset: { datasetMembers: any[]; }; }) => {
+                      _fmember.dataset.datasetMembers.forEach((dsmember: any) => {
                         values.forEach((v: any) => {
                           if(v.dataelementid == dsmember.Dataelement.id){
                             dsmember.value = v.value;
@@ -536,8 +557,8 @@ export class FormInstanceComponent implements OnInit {
     let headers = new HttpHeaders().set('Authorization', 'Bearer ' + (localStorage.getItem("token") || ''));
     let values = [];
     
-    for (let fmember of this.form.Formmembers) {
-      for (let dsmember of fmember.Dataset.Datasetmembers) {
+    for (let fmember of this.form.formMembers) {
+      for (let dsmember of fmember.dataset.datasetMembers) {
         if(!dsmember.valueid){
           dsmember.valueid = 0;
         }

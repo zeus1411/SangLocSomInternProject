@@ -1,5 +1,8 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -8,14 +11,11 @@ import { FooterComponent } from './common/footer/footer.component';
 import { HeroComponent } from './common/hero/hero.component';
 import { SortPipe } from './pipe/sort.pipe';
 import { FilterPipe } from './pipe/filter.pipe';
-import { HttpClientModule } from '@angular/common/http';
 import { FormComponent } from './pages/form/form.component';
 import { HomeComponent } from './pages/home/home.component';
 import { RenderComponent } from './common/render/render.component';
 import { ResultComponent } from './pages/result/result.component';
-import { FormsModule } from '@angular/forms';
 import { RenderValueComponent } from './common/render-value/render-value.component';
-import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { PolicyComponent } from './pages/policy/policy.component';
 import { UserGuideComponent } from './pages/user-guide/user-guide.component';
 import { LoginComponent } from './pages/login/login.component';
@@ -23,6 +23,8 @@ import { ResultsComponent } from './pages/member/results/results.component';
 import { ResultListComponent } from './pages/member/results/result-list/result-list.component';
 import { FormInstanceComponent } from './pages/member/form-instance/form-instance.component';
 import { FormDetailComponent } from './pages/form/form-detail/form-detail.component';
+import { AuthInterceptor } from './core/interceptors/auth.interceptor';
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -47,9 +49,17 @@ import { FormDetailComponent } from './pages/form/form-detail/form-detail.compon
   imports: [
     BrowserModule,
     AppRoutingModule,
-    HttpClientModule, FormsModule, NgbModule
+    HttpClientModule,
+    FormsModule,
+    NgbModule
   ],
-  providers: [],
+  providers: [
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthInterceptor,
+      multi: true
+    }
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

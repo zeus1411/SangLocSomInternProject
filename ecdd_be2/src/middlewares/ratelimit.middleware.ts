@@ -1,92 +1,181 @@
 import { Request, Response, NextFunction } from 'express';
 import { ResponseUtil } from '../utils/response.util';
 
-/**
- * Simple in-memory rate limiter for token generation
- * Prevents abuse by limiting token requests per IP
- */
-
 interface RateLimitEntry {
   count: number;
   firstRequestTime: number;
   blockedUntil?: number;
 }
 
-// Store rate limit data in memory (IP -> RateLimitEntry)
-const rateLimitStore = new Map<string, RateLimitEntry>();
+// Separate stores for different purposes
+const loginRateLimitStore = new Map<string, RateLimitEntry>();
+const formSubmissionRateLimitStore = new Map<string, RateLimitEntry>();
 
 // Configuration
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const MAX_REQUESTS_PER_WINDOW = 5; // Max 5 token requests per 15 minutes
-const BLOCK_DURATION_MS = 30 * 60 * 1000; // Block for 30 minutes if exceeded
+const LOGIN_CONFIG = {
+  WINDOW_MS: 15 * 60 * 1000,      // 15 minutes
+  MAX_REQUESTS: 5,                 // 5 login attempts
+  BLOCK_DURATION_MS: 30 * 60 * 1000 // Block 30 minutes
+};
 
-/**
- * Clean up old entries periodically to prevent memory leak
- */
-setInterval(() => {
+const FORM_SUBMISSION_CONFIG = {
+  WINDOW_MS: 5 * 60 * 1000,        // 5 minutes
+  MAX_REQUESTS_AUTHENTICATED: 10,   // 10 submissions per 5 min (authenticated)
+  MAX_REQUESTS_ANONYMOUS: 3,        // 3 submissions per 5 min (anonymous/IP)
+  BLOCK_DURATION_MS: 10 * 60 * 1000 // Block 10 minutes
+};
+
+// Cleanup function
+const cleanupStore = (store: Map<string, RateLimitEntry>, windowMs: number) => {
   const now = Date.now();
-  for (const [ip, entry] of rateLimitStore.entries()) {
-    // Remove entries older than block duration
+  for (const [key, entry] of store.entries()) {
     if (entry.blockedUntil && entry.blockedUntil < now) {
-      rateLimitStore.delete(ip);
-    } else if (!entry.blockedUntil && (now - entry.firstRequestTime) > RATE_LIMIT_WINDOW_MS) {
-      rateLimitStore.delete(ip);
+      store.delete(key);
+    } else if (!entry.blockedUntil && (now - entry.firstRequestTime) > windowMs) {
+      store.delete(key);
     }
   }
-}, 5 * 60 * 1000); // Clean every 5 minutes
+};
+
+// Cleanup every 5 minutes
+setInterval(() => {
+  cleanupStore(loginRateLimitStore, LOGIN_CONFIG.WINDOW_MS);
+  cleanupStore(formSubmissionRateLimitStore, FORM_SUBMISSION_CONFIG.WINDOW_MS);
+  console.log(`🧹 Rate limit cleanup: Login=${loginRateLimitStore.size}, Form=${formSubmissionRateLimitStore.size}`);
+}, 5 * 60 * 1000);
 
 /**
- * Rate limiting middleware for login/token generation endpoints
+ * Rate limiter for login/token generation
  */
 export const loginRateLimiter = (req: Request, res: Response, next: NextFunction) => {
   const clientIp = (req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown') as string;
   const now = Date.now();
 
-  let entry = rateLimitStore.get(clientIp);
+  let entry = loginRateLimitStore.get(clientIp);
 
-  // Check if IP is currently blocked
+  // Check if blocked
   if (entry?.blockedUntil && entry.blockedUntil > now) {
     const remainingMinutes = Math.ceil((entry.blockedUntil - now) / 60000);
     return ResponseUtil.error(
       res,
-      `Too many login attempts. Please try again in ${remainingMinutes} minutes.`,
+      `Quá nhiều lần đăng nhập. Vui lòng thử lại sau ${remainingMinutes} phút.`,
       429
     );
   }
 
-  // Initialize or reset entry if window expired
-  if (!entry || (now - entry.firstRequestTime) > RATE_LIMIT_WINDOW_MS) {
-    entry = {
-      count: 1,
-      firstRequestTime: now
-    };
-    rateLimitStore.set(clientIp, entry);
+  // Initialize or reset
+  if (!entry || (now - entry.firstRequestTime) > LOGIN_CONFIG.WINDOW_MS) {
+    entry = { count: 1, firstRequestTime: now };
+    loginRateLimitStore.set(clientIp, entry);
     return next();
   }
 
-  // Increment request count
+  // Increment
   entry.count++;
 
-  // Check if limit exceeded
-  if (entry.count > MAX_REQUESTS_PER_WINDOW) {
-    entry.blockedUntil = now + BLOCK_DURATION_MS;
-    rateLimitStore.set(clientIp, entry);
+  // Check limit
+  if (entry.count > LOGIN_CONFIG.MAX_REQUESTS) {
+    entry.blockedUntil = now + LOGIN_CONFIG.BLOCK_DURATION_MS;
+    loginRateLimitStore.set(clientIp, entry);
     
-    const blockMinutes = Math.ceil(BLOCK_DURATION_MS / 60000);
+    const blockMinutes = Math.ceil(LOGIN_CONFIG.BLOCK_DURATION_MS / 60000);
     return ResponseUtil.error(
       res,
-      `Too many login attempts. Your IP has been temporarily blocked for ${blockMinutes} minutes.`,
+      `Quá nhiều lần đăng nhập. IP của bạn đã bị khóa tạm thời trong ${blockMinutes} phút.`,
       429
     );
   }
 
-  // Update entry
-  rateLimitStore.set(clientIp, entry);
+  loginRateLimitStore.set(clientIp, entry);
 
-  // Add rate limit info to response headers
-  res.setHeader('X-RateLimit-Limit', MAX_REQUESTS_PER_WINDOW.toString());
-  res.setHeader('X-RateLimit-Remaining', (MAX_REQUESTS_PER_WINDOW - entry.count).toString());
-  res.setHeader('X-RateLimit-Reset', new Date(entry.firstRequestTime + RATE_LIMIT_WINDOW_MS).toISOString());
+  // Headers
+  res.setHeader('X-RateLimit-Limit', LOGIN_CONFIG.MAX_REQUESTS.toString());
+  res.setHeader('X-RateLimit-Remaining', (LOGIN_CONFIG.MAX_REQUESTS - entry.count).toString());
+  res.setHeader('X-RateLimit-Reset', new Date(entry.firstRequestTime + LOGIN_CONFIG.WINDOW_MS).toISOString());
 
+  next();
+};
+
+/**
+ * Rate limiter for form submissions
+ * Different limits for authenticated vs anonymous users
+ */
+export const formSubmissionRateLimiter = (req: Request, res: Response, next: NextFunction) => {
+  const now = Date.now();
+  
+  // Determine identifier and limits
+  const isAuthenticated = !!(req.user?.email && req.user?.userId);
+  const identifier = isAuthenticated ? req.user!.email : (req.clientIp || 'unknown');
+  const maxRequests = isAuthenticated 
+    ? FORM_SUBMISSION_CONFIG.MAX_REQUESTS_AUTHENTICATED 
+    : FORM_SUBMISSION_CONFIG.MAX_REQUESTS_ANONYMOUS;
+  
+  console.log(`🔍 Form submission rate check: ${identifier} (${isAuthenticated ? 'authenticated' : 'anonymous'})`);
+  
+  let entry = formSubmissionRateLimitStore.get(identifier);
+
+  // Check if blocked
+  if (entry?.blockedUntil && entry.blockedUntil > now) {
+    const remainingMinutes = Math.ceil((entry.blockedUntil - now) / 60000);
+    return res.status(429).json({
+      success: false,
+      message: `Quá nhiều yêu cầu gửi form. Vui lòng thử lại sau ${remainingMinutes} phút.`,
+      data: {
+        limit: maxRequests,
+        remaining: 0,
+        resetAt: new Date(entry.blockedUntil).toISOString()
+      }
+    });
+  }
+
+  // Initialize or reset
+  if (!entry || (now - entry.firstRequestTime) > FORM_SUBMISSION_CONFIG.WINDOW_MS) {
+    entry = { count: 1, firstRequestTime: now };
+    formSubmissionRateLimitStore.set(identifier, entry);
+    
+    console.log(`✅ Rate limit initialized: ${identifier} (1/${maxRequests})`);
+    
+    // Headers
+    res.setHeader('X-RateLimit-Limit', maxRequests.toString());
+    res.setHeader('X-RateLimit-Remaining', (maxRequests - 1).toString());
+    res.setHeader('X-RateLimit-Reset', new Date(entry.firstRequestTime + FORM_SUBMISSION_CONFIG.WINDOW_MS).toISOString());
+    
+    return next();
+  }
+
+  // Increment
+  entry.count++;
+
+  // Check limit
+  if (entry.count > maxRequests) {
+    entry.blockedUntil = now + FORM_SUBMISSION_CONFIG.BLOCK_DURATION_MS;
+    formSubmissionRateLimitStore.set(identifier, entry);
+    
+    const blockMinutes = Math.ceil(FORM_SUBMISSION_CONFIG.BLOCK_DURATION_MS / 60000);
+    
+    console.log(`🚫 Rate limit exceeded: ${identifier} (${entry.count}/${maxRequests})`);
+    
+    return res.status(429).json({
+      success: false,
+      message: isAuthenticated
+        ? `Bạn đã gửi quá nhiều form. Vui lòng thử lại sau ${blockMinutes} phút.`
+        : `Quá nhiều yêu cầu từ IP này. Vui lòng đăng nhập hoặc thử lại sau ${blockMinutes} phút.`,
+      data: {
+        limit: maxRequests,
+        remaining: 0,
+        resetAt: new Date(entry.blockedUntil).toISOString()
+      }
+    });
+  }
+
+  formSubmissionRateLimitStore.set(identifier, entry);
+
+  // Headers
+  res.setHeader('X-RateLimit-Limit', maxRequests.toString());
+  res.setHeader('X-RateLimit-Remaining', (maxRequests - entry.count).toString());
+  res.setHeader('X-RateLimit-Reset', new Date(entry.firstRequestTime + FORM_SUBMISSION_CONFIG.WINDOW_MS).toISOString());
+
+  console.log(`✅ Rate limit check passed: ${identifier} (${entry.count}/${maxRequests})`);
+  
   next();
 };

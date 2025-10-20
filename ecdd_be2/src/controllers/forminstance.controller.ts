@@ -1,162 +1,213 @@
 import { Request, Response } from 'express';
 import { BaseController } from './base.controller';
 import { FormInstance } from '../models/FormInstance';
-import {FormInstanceValue} from '../models/FormInstanceValue';
-import {Form} from '../models/Form';
-import {OrgUnit} from '../models/Orgunit';
-import {Period} from '../models/Period';
-import {DataElement} from '../models/DataElement';
-import {DatasetMember} from '../models/DatasetMember';
+import { FormInstanceValue } from '../models/FormInstanceValue';
+import { Form } from '../models/Form';
+import { OrgUnit } from '../models/Orgunit';
+import { Period } from '../models/Period';
+import { DataElement } from '../models/DataElement';
+import { DatasetMember } from '../models/DatasetMember';
 import { ResponseUtil } from '../utils/response.util';
-import { plainToClass } from 'class-transformer';
-import { validate } from 'class-validator';
-import { CreateFormInstanceDto, UpdateFormInstanceDto } from '../dtos/forminstance.dto';
 
 export class FormInstanceController extends BaseController<FormInstance> {
-    constructor() {
-      super(FormInstance);
-    }
-  
-    // CREATE FormInstance với Values
-    async createWithValues(req: Request, res: Response) {
-      try {
-        const dto = plainToClass(CreateFormInstanceDto, req.body);
-        const errors = await validate(dto);
-  
-        if (errors.length > 0) {
-          return ResponseUtil.badRequest(res, 'Validation failed', errors);
-        }
+  constructor() {
+    super(FormInstance);
+  }
 
-        // Get createdby from token (required by authMiddleware)
-        const createdBy = req.user?.email || 'system';
-  
-        // Create FormInstance
-        const formInstance = await FormInstance.create({
-          personid: dto.personid,
-          name: dto.name,
-          birthday: dto.birthday,
-          address: dto.address,
-          months: dto.months,
-          formid: dto.formid,
-          description: dto.description,
-          gender: dto.gender,
-          parentname: dto.parentname,
-          phone: dto.phone,
-          surveyby: dto.surveyby,
-          surveyplace: dto.surveyplace,
-          periodid: dto.periodid,
-          orgunitid: dto.orgunitid,
-          provinceid: dto.provinceid,
-          districtid: dto.districtid,
-          createddate: new Date(),
-          createdby: createdBy
-        });
-  
-        // Create FormInstanceValues if provided
-        if (dto.values && dto.values.length > 0) {
-          const values = dto.values.map(v => ({
-            forminstanceid: formInstance.id,
-            datasetmemberid: v.datasetmemberid,
-            dataelementid: v.dataelementid,
-            value: v.value,
-            createddate: new Date(),
-            createdby: createdBy
-          }));
-  
-          await FormInstanceValue.bulkCreate(values);
-        }
-  
-        return ResponseUtil.created(res, formInstance, 'Form instance created successfully');
-      } catch (error: any) {
-        console.error('Create FormInstance error:', error);
-        return ResponseUtil.error(res, error.message);
+  /**
+   * CREATE FormInstance với 3 cases JWT handling
+   */
+  async createWithValues(req: Request, res: Response) {
+    try {
+      const { instance, values } = req.body;
+      const now = new Date();
+      
+      // XÁC ĐỊNH createdBy và surveyNote
+      let createdBy: string;
+      let surveyNote: string | undefined;
+      
+      if (req.user?.email && req.user?.userId) {
+        // CASE 2: Valid token - Use email from JWT
+        createdBy = req.user.email;
+        console.log(`✅ Case 2: Create by authenticated user: ${createdBy}`);
+      } else {
+        // CASE 3: No token - Use IP address
+        createdBy = 'anonymous';
+        surveyNote = `Created from IP: ${req.clientIp || 'unknown'} at ${now.toISOString()}`;
+        console.log(`⚠️ Case 3: Create by anonymous user. ${surveyNote}`);
       }
-    }
-  
-    // UPDATE FormInstance với Values
-    async updateWithValues(req: Request, res: Response) {
-      try {
-        const { id } = req.params;
-        const dto = plainToClass(UpdateFormInstanceDto, req.body);
-        const errors = await validate(dto);
-  
-        if (errors.length > 0) {
-          return ResponseUtil.badRequest(res, 'Validation failed', errors);
-        }
-  
-        const formInstance = await FormInstance.findByPk(id);
-        if (!formInstance) {
-          return ResponseUtil.notFound(res, 'Form instance not found');
-        }
 
-        // Get createdby from token (required by authMiddleware)
-        const createdBy = req.user?.email || 'system';
-  
-        // Update FormInstance
-        await formInstance.update({
-          personid: dto.personid,
-          name: dto.name,
-          birthday: dto.birthday,
-          address: dto.address,
-          months: dto.months,
-          formid: dto.formid,
-          description: dto.description,
-          ispasses: dto.ispasses,
-          gender: dto.gender,
-          parentname: dto.parentname,
-          phone: dto.phone,
-          surveyby: dto.surveyby,
-          surveyplace: dto.surveyplace,
-          periodid: dto.periodid,
-          orgunitid: dto.orgunitid,
-          provinceid: dto.provinceid,
-          districtid: dto.districtid
-        });
-  
-        // Update or Insert Values based on valueid
-        if (dto.values && dto.values.length > 0) {
-          for (const v of dto.values) {
-            if (v.valueid) {
-              // UPDATE existing value
-              await FormInstanceValue.update(
-                {
-                  datasetmemberid: v.datasetmemberid,
-                  dataelementid: v.dataelementid,
-                  value: v.value,
-                  createddate: new Date(),
-                  createdby: createdBy
-                },
-                {
-                  where: { id: v.valueid }
-                }
-              );
-            } else {
-              // INSERT new value
-              await FormInstanceValue.create({
-                forminstanceid: formInstance.id,
-                datasetmemberid: v.datasetmemberid,
-                dataelementid: v.dataelementid,
+      // Create FormInstance
+      const formInstance = await FormInstance.create({
+        personid: instance.personid,
+        name: instance.name,
+        birthday: instance.birthday,
+        address: instance.address,
+        months: instance.months,
+        formid: instance.formid,
+        description: instance.description,
+        ispasses: instance.ispasses,
+        gender: instance.gender,
+        parentname: instance.parentname,
+        phone: instance.phone,
+        surveyby: instance.surveyby,
+        surveyplace: instance.surveyplace,
+        periodid: instance.periodid,
+        orgunitid: instance.orgunitid,
+        provinceid: instance.provinceid,
+        districtid: instance.districtid,
+        createddate: now,
+        createdby: createdBy,
+        surveyNote: surveyNote
+      });
+
+      // Create FormInstanceValues
+      if (values && values.length > 0) {
+        const valueRecords = values.map((v: any) => ({
+          forminstanceid: formInstance.id,
+          datasetmemberid: v.datasetmember?.id,
+          dataelementid: v.datasetmember?.dataelementid,
+          value: v.value,
+          createddate: now,
+          createdby: createdBy
+        }));
+
+        await FormInstanceValue.bulkCreate(valueRecords);
+      }
+
+      console.log(`✅ Created FormInstance #${formInstance.id} by ${createdBy}`);
+      return ResponseUtil.created(res, formInstance, 'Tạo phiếu sàng lọc thành công');
+      
+    } catch (error: any) {
+      console.error('❌ Create FormInstance error:', error);
+      return ResponseUtil.error(res, error.message);
+    }
+  }
+
+  /**
+   * UPDATE FormInstance với 3 cases JWT handling
+   */
+  async updateWithValues(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { instance, values } = req.body;
+      const now = new Date();
+
+      const formInstance = await FormInstance.findByPk(id);
+      if (!formInstance) {
+        return ResponseUtil.notFound(res, 'Không tìm thấy phiếu sàng lọc');
+      }
+
+      // XÁC ĐỊNH updatedBy
+      let updatedBy: string;
+      let updateNote: string | undefined;
+      
+      if (req.user?.email && req.user?.userId) {
+        // CASE 2: Valid token
+        updatedBy = req.user.email;
+        console.log(`✅ Case 2: Update by authenticated user: ${updatedBy}`);
+      } else {
+        // CASE 3: No token - Track IP
+        updatedBy = 'anonymous';
+        const existingNote = formInstance.surveyNote || '';
+        updateNote = `${existingNote}\nUpdated from IP: ${req.clientIp || 'unknown'} at ${now.toISOString()}`;
+        console.log(`⚠️ Case 3: Update by anonymous user. IP: ${req.clientIp}`);
+      }
+
+      // Update FormInstance
+      await formInstance.update({
+        personid: instance.personid,
+        name: instance.name,
+        birthday: instance.birthday,
+        address: instance.address,
+        months: instance.months,
+        formid: instance.formid,
+        description: instance.description,
+        ispasses: instance.ispasses,
+        gender: instance.gender,
+        parentname: instance.parentname,
+        phone: instance.phone,
+        surveyby: instance.surveyby,
+        surveyplace: instance.surveyplace,
+        periodid: instance.periodid,
+        orgunitid: instance.orgunitid,
+        provinceid: instance.provinceid,
+        districtid: instance.districtid,
+        updateddate: now,
+        updatedby: updatedBy,
+        surveyNote: updateNote || formInstance.surveyNote
+      });
+
+      // Update or Insert Values
+      if (values && values.length > 0) {
+        for (const v of values) {
+          if (v.id && v.id > 0) {
+            // UPDATE existing
+            await FormInstanceValue.update(
+              {
+                datasetmemberid: v.datasetmember?.id,
+                dataelementid: v.datasetmember?.dataelementid,
                 value: v.value,
-                createddate: new Date(),
-                createdby: createdBy
-              });
-            }
+                createddate: now,
+                createdby: updatedBy
+              },
+              { where: { id: v.id } }
+            );
+          } else {
+            // INSERT new
+            await FormInstanceValue.create({
+              forminstanceid: formInstance.id,
+              datasetmemberid: v.datasetmember?.id,
+              dataelementid: v.datasetmember?.dataelementid,
+              value: v.value,
+              createddate: now,
+              createdby: updatedBy
+            });
           }
         }
-  
-        return ResponseUtil.updated(res, formInstance, 'Form instance updated successfully');
-      } catch (error: any) {
-        console.error('Update FormInstance error:', error);
-        return ResponseUtil.error(res, error.message);
       }
+
+      console.log(`✅ Updated FormInstance #${id} by ${updatedBy}`);
+      return ResponseUtil.updated(res, formInstance, 'Cập nhật phiếu sàng lọc thành công');
+      
+    } catch (error: any) {
+      console.error('❌ Update FormInstance error:', error);
+      return ResponseUtil.error(res, error.message);
     }
+  }
   
-    // GET FormInstance with complete data
+    // FIX: GET FormInstance with COMPLETE nested Orgunit data
     async getComplete(req: Request, res: Response) {
       try {
         const { id } = req.params;
+        
         const formInstance = await FormInstance.findByPk(id, {
           include: [
+            {
+              model: Form,
+              as: 'form'
+            },
+            {
+              model: Period,
+              as: 'period'
+            },
+            {
+              // FIX: Load Orgunit với nested Parent (Huyện) và Parent.Parent (Tỉnh)
+              model: OrgUnit,
+              as: 'orgunit',
+              include: [
+                {
+                  model: OrgUnit,
+                  as: 'parent', // Huyện
+                  include: [
+                    {
+                      model: OrgUnit,
+                      as: 'parent' // Tỉnh
+                    }
+                  ]
+                }
+              ]
+            },
             {
               model: FormInstanceValue,
               as: 'formInstanceValues',
@@ -189,7 +240,6 @@ export class FormInstanceController extends BaseController<FormInstance> {
       }
     }
   
-    // GET all FormInstances with filters
     async getAllWithFilters(req: Request, res: Response) {
       try {
         const { page = 1, limit = 10, formid, periodid, orgunitid } = req.query;
@@ -227,7 +277,6 @@ export class FormInstanceController extends BaseController<FormInstance> {
       }
     }
 
-    // GET FormInstance values only
     async getValues(req: Request, res: Response) {
       try {
         const { id } = req.params;
@@ -253,4 +302,3 @@ export class FormInstanceController extends BaseController<FormInstance> {
       }
     }
   }
-  
