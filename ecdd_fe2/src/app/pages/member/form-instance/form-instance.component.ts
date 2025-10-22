@@ -117,39 +117,80 @@ export class FormInstanceComponent implements OnInit {
   // FIX: Load form instance với xử lý đúng cấu trúc Orgunit
   async loadFormInstanceForEdit(id: string) {
     try {
-      const response = await this.http.get<any>(environment.url + '/api/forminstances/' + id).toPromise();
-      const data = response.data;
-      
-      console.log('📦 Raw form instance data:', data);
-      
-      // Set person data
-      this.person = { ...data };
-      
-      // FIX: Set Period - Sequelize trả về với capital letter
-      if (data.Period) {
-        this.person.periodid = data.Period;
-        this.periods = [data.Period];
-        console.log('📅 Loaded period:', data.Period);
-      } else if (data.period) {
-        // Fallback lowercase
-        this.person.periodid = data.period;
-        this.periods = [data.period];
-        console.log('📅 Loaded period (lowercase):', data.period);
-      } else if (data.periodid) {
-        // Fallback: Load period by ID
-        console.warn('⚠️ No period object, loading by ID:', data.periodid);
-        this.http.get<any>(environment.url + '/api/periods/' + data.periodid).toPromise()
-          .then((periodResponse: any) => {
-            if (periodResponse.data) {
-              this.person.periodid = periodResponse.data;
-              this.periods = [periodResponse.data];
-              console.log('📅 Loaded period from API:', periodResponse.data);
+      // Load form instance data
+    const response = await this.http.get<any>(`${environment.url}/api/forminstances/${id}`).toPromise();
+    const data = response.data;
+    
+    console.log('📦 Raw form instance data:', data);
+    
+    // Set person data
+    this.person = { ...data };
+    
+    // Load the form data
+    const formResponse = await this.http.get<any>(`${environment.url}/api/forms/${data.formid}`).toPromise();
+    this.form = formResponse.data;
+    console.log('📋 Loaded form:', this.form);
+
+    // Load the form instance values
+    const valuesResponse = await this.http.get<any>(`${environment.url}/api/forminstances/${id}/value`).toPromise();
+    const values = valuesResponse.data || [];
+    console.log('📋 Loaded form instance values:', values);
+
+    // Map the values to the form fields
+    if (this.form?.formMembers && values) {
+      this.form.formMembers.forEach((fmember: any) => {
+        if (fmember.dataset?.datasetMembers) {
+          fmember.dataset.datasetMembers.forEach((dsmember: any) => {
+            // Find matching value
+            const valueObj = values.find((v: any) => 
+              v.dataelementid === dsmember.dataelementid || 
+              (v.datasetMember && v.datasetMember.dataelementid === dsmember.dataelementid)
+            );
+            
+            if (valueObj) {
+              dsmember.value = valueObj.value;
+              dsmember.valueid = valueObj.id;
+              console.log(`✅ Mapped value for dataelement ${dsmember.dataelementid}:`, valueObj.value);
+              
+              // Calculate score if needed
+              if (dsmember.valuelist) {
+                dsmember.valuelist.split(';').forEach((item: string) => {
+                  if (this.splitStr(item, '::')[0] === valueObj.value) {
+                    this.nowscore(dsmember, item);
+                  }
+                });
+              }
             }
-          })
-          .catch((err) => console.error('❌ Failed to load period:', err));
-      } else {
-        console.error('❌ No period data available at all!');
-      }
+          });
+        }
+      });
+    }
+
+    // FIX: Set Period - Sequelize trả về với capital letter
+    if (data.Period) {
+      this.person.periodid = data.Period;
+      this.periods = [data.Period];
+      console.log('📅 Loaded period:', data.Period);
+    } else if (data.period) {
+      // Fallback lowercase
+      this.person.periodid = data.period;
+      this.periods = [data.period];
+      console.log('📅 Loaded period (lowercase):', data.period);
+    } else if (data.periodid) {
+      // Fallback: Load period by ID
+      console.warn('⚠️ No period object, loading by ID:', data.periodid);
+      this.http.get<any>(`${environment.url}/api/periods/${data.periodid}`).toPromise()
+        .then((periodResponse: any) => {
+          if (periodResponse.data) {
+            this.person.periodid = periodResponse.data;
+            this.periods = [periodResponse.data];
+            console.log('📅 Loaded period from API:', periodResponse.data);
+          }
+        })
+        .catch((err) => console.error('❌ Failed to load period:', err));
+    } else {
+      console.error('❌ No period data available at all!');
+    }
 
       // Convert birthday
       const bod = new Date(data.birthday);
@@ -211,17 +252,17 @@ export class FormInstanceComponent implements OnInit {
       console.log('✅ Final person data:', this.person);
       
     } catch (error) {
-      console.error('❌ Error loading form instance:', error);
-      Swal.fire({
-        title: 'Lỗi tải dữ liệu!',
-        text: 'Không thể tải thông tin phiếu sàng lọc.',
-        icon: 'error',
-        confirmButtonText: 'OK'
-      }).then(() => {
-        this._router.navigate(['/member/results']);
-      });
-    }
+    console.error('❌ Error loading form instance:', error);
+    Swal.fire({
+      title: 'Lỗi tải dữ liệu!',
+      text: 'Không thể tải thông tin phiếu sàng lọc.',
+      icon: 'error',
+      confirmButtonText: 'OK'
+    }).then(() => {
+      this._router.navigate(['/member/results']);
+    });
   }
+}
 
   loadActivePeriod() {
     this.apiService.getActivePeriod().subscribe({
@@ -557,27 +598,27 @@ export class FormInstanceComponent implements OnInit {
     let headers = new HttpHeaders().set('Authorization', 'Bearer ' + (localStorage.getItem("token") || ''));
     let values = [];
     
+    // Collect form values
     for (let fmember of this.form.formMembers) {
       for (let dsmember of fmember.dataset.datasetMembers) {
-        if(!dsmember.valueid){
-          dsmember.valueid = 0;
+        // Only include values that have been set
+        if (dsmember.value !== undefined && dsmember.value !== null) {
+          let value = {
+            datasetmember: {
+              id: dsmember.id,
+              dataelementid: dsmember.dataelementid
+            },
+            value: dsmember.value,
+            id: dsmember.valueid || 0 // Use 0 for new values
+          };
+          values.push(value);
         }
-        let value = {
-          datasetmember: dsmember,
-          value: dsmember.value,
-          id: dsmember.valueid
-        };
-        values.push(value);
       }
-    }
-
-    if(!this.person.id){
-      this.person.id = 0;
     }
 
     let body = {
       instance: {
-        id: this.person.id,
+        id: this.person.id || 0,
         name: this.person.name,
         birthday: this.person.birthday,
         gender: this.person.gender,
@@ -591,41 +632,44 @@ export class FormInstanceComponent implements OnInit {
         formid: this.form.id,
         description: this.form.explain,
         orgunitid: this.person.orgunitid,
-        periodid: this.person.periodid.id,
-        createdby: this.person.createdby
+        periodid: this.person.periodid?.id || this.person.periodid,
+        provinceid: this.person.tinh,
+        districtid: this.person.huyen
       },
       values: values
     };
 
     console.log('Saving form instance with data:', body);
 
-    this.http.post<any>(environment.url + '/api/forminstances/', body, { headers: headers }).subscribe({
-      next: (d) => {
-        if(d.success){
-          Swal.fire({
-            title: 'Lưu kết quả thành công!',
-          }).then((result) => {
-            that._router.navigate(['member/results']);
-            that.isloading = false;
-          });
-        } else {
-          Swal.fire({
-            title: 'Lưu không thành công!',
-            text: d.message,
-            icon: "error",
-          }).then((result) => {
-            that.isloading = false;
-          });
-        }
+    const url = this.person.id 
+      ? `${environment.url}/api/forminstances/${this.person.id}`
+      : `${environment.url}/api/forminstances`;
+
+    const request = this.person.id
+      ? this.http.put(url, body, { headers })
+      : this.http.post(url, body, { headers });
+
+    request.subscribe({
+      next: (d: any) => {
+        console.log('Save successful:', d);
+        that.isloading = false;
+        Swal.fire({
+          title: 'Thành công!',
+          text: 'Đã lưu phiếu sàng lọc thành công.',
+          icon: 'success',
+          confirmButtonText: 'OK'
+        }).then((result) => {
+          that._router.navigate(['/member/results']);
+        });
       },
       error: (error) => {
-        console.error('Error saving form instance:', error);
+        console.error('Save error:', error);
+        that.isloading = false;
         Swal.fire({
-          title: 'Lỗi lưu dữ liệu!',
+          title: 'Lỗi!',
           text: 'Không thể lưu phiếu sàng lọc. Vui lòng thử lại.',
-          icon: "error",
-        }).then((result) => {
-          that.isloading = false;
+          icon: 'error',
+          confirmButtonText: 'OK'
         });
       }
     });
