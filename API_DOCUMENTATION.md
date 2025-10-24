@@ -2,17 +2,27 @@
 
 ## Mục lục
 1. [Tổng quan](#tổng-quan)
-2. [Xác thực](#xác-thực)
-3. [Danh sách API](#danh-sách-api)
+2. [Triển khai với Docker](#triển-khai-với-docker)
+3. [Xác thực](#xác-thực)
+4. [Danh sách API](#danh-sách-api)
    - [Xác thực](#xác-thực-1)
    - [Người dùng](#người-dùng)
    - [Biểu mẫu (Forms)](#biểu-mẫu-forms)
    - [Dữ liệu (Data)](#dữ-liệu-data)
    - [Tổ chức (Organization)](#tổ-chức-organization)
+   - [Kiểm tra sức khỏe (Health Check)](#kiểm-tra-sức-khỏe-health-check)
 
 ## Tổng quan
 
-Tất cả các API đều trả về dữ liệu dưới dạng JSON. Các lỗi sẽ có cấu trúc như sau:
+Tài liệu này mô tả các API có sẵn trong hệ thống ECDD. Tất cả các API đều trả về dữ liệu dưới dạng JSON và yêu cầu xác thực (trừ một số endpoint công khai).
+
+### Địa chỉ cơ sở (Base URL)
+
+- **Development**: `http://localhost:3000/api`
+
+### Định dạng phản hồi
+
+Các lỗi sẽ có cấu trúc như sau:
 
 ```json
 {
@@ -22,13 +32,74 @@ Tất cả các API đều trả về dữ liệu dưới dạng JSON. Các lỗ
 }
 ```
 
+## Triển khai với Docker
+
+### Các dịch vụ chính
+
+1. **API Service**
+   - Port: 3000
+   - Health check: `GET /health`
+   - Environment: `.env`
+
+2. **Frontend**
+   - Port: 80 (qua Nginx)
+   - Served by: Nginx
+   - Environment: `ecdd_fe2/src/environments/environment.*.ts`
+
+3. **Database (PostgreSQL)**
+   - Port: 5432
+   - Volume: `postgres_data`
+   - Adminer: http://localhost:8080 (nếu được bật)
+
+4. **Redis** (Nếu sử dụng cho cache/queue)
+   - Port: 6379
+   - Volume: `redis_data`
+
+### Biến môi trường
+
+Tạo file `.env` từ `.env.example` và cập nhật các giá trị phù hợp:
+
+```env
+# Backend
+NODE_ENV=development
+PORT=3000
+DATABASE_URL=postgresql://postgres:123456@postgres:5432/admin_ecdd?schema=public
+JWT_SECRET=zeus_super_key
+JWT_EXPIRES_IN=1d
+
+# Frontend (được sử dụng trong quá trình build)
+API_URL=http://localhost:3000/api
+```
+
+### Lệnh Docker thông dụng
+
+```bash
+# Khởi động tất cả dịch vụ
+docker-compose up -d
+
+# Xem logs
+docker-compose logs -f
+
+# Khởi động lại một dịch vụ
+docker-compose restart service_name
+
+# Xóa tất cả container và volume
+docker-compose down -v
+```
+
 ## Xác thực
 
 Hầu hết các API yêu cầu xác thực thông qua JWT token. Token cần được gửi trong header của request:
 
+```http
+Authorization: Bearer your.jwt.token.here
 ```
-Authorization: Bearer <token>
-```
+
+### Lấy JWT token
+
+1. Gửi request đăng nhập đến `/api/auth/login`
+2. Lưu token từ response
+3. Thêm token vào header `Authorization` cho các request tiếp theo
 
 ## Danh sách API
 
@@ -60,7 +131,49 @@ Authorization: Bearer <token>
 
 ### Người dùng
 
-#### Lấy thông tin người dùng hiện tại
+## Kiểm tra sức khỏe (Health Check)
+
+### Kiểm tra trạng thái API
+
+- **URL**: `/health`
+- **Method**: `GET`
+- **Yêu cầu xác thực**: Không
+- **Response thành công**:
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2023-01-01T00:00:00.000Z",
+    "version": "1.0.0",
+    "services": {
+      "database": true,
+      "redis": true
+    }
+  }
+  ```
+
+### Kiểm tra cơ sở dữ liệu
+
+- **URL**: `/health/db`
+- **Method**: `GET`
+- **Yêu cầu xác thực**: Có (Admin)
+- **Response thành công**:
+  ```json
+  {
+    "status": "ok",
+    "database": {
+      "connection": "connected",
+      "tables": 15,
+      "migrations": {
+        "pending": 0,
+        "executed": 10
+      }
+    }
+  }
+  ```
+
+## Người dùng
+
+### Lấy thông tin người dùng hiện tại
 
 - **URL**: `/api/users/me`
 - **Method**: `GET`
@@ -141,6 +254,25 @@ Authorization: Bearer <token>
   ```
 
 ### Dữ liệu (Data)
+
+#### Tải lên file đính kèm
+
+- **URL**: `/api/upload`
+- **Method**: `POST`
+- **Content-Type**: `multipart/form-data`
+- **Yêu cầu xác thực**: Có
+- **Body**:
+  - `file`: File cần tải lên
+  - `folder` (tùy chọn): Thư mục đích
+- **Response thành công**:
+  ```json
+  {
+    "url": "/uploads/filename.ext",
+    "path": "/var/www/uploads/filename.ext",
+    "size": 1024,
+    "mimetype": "image/png"
+  }
+  ```
 
 #### Gửi dữ liệu biểu mẫu
 

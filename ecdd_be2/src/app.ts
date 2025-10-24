@@ -9,7 +9,7 @@ import sequelize from './config/database';
 dotenv.config();
 
 const app: Application = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 
 // Middlewares
 app.use(cors());

@@ -5,7 +5,7 @@
 export const environment = {
   production: false,
   // url : 'https://ecdd-api.dientoan.vn'
-  url : 'http://localhost:3000'  // Backend API URL
+  url : 'http://localhost:3001'  // Backend API URL
 
 };
 

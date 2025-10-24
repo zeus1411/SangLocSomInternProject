@@ -10,6 +10,7 @@ import formmemberRoutes from './formmember.routes';
 import datasetmemberRoutes from './datasetmember.routes';
 import forminstanceRoutes from './forminstance.routes';
 import forminstancevalueRoutes from './forminstancevalue.route';
+import uploadRoute from './upload.routes';
 
 const router = Router();
 
@@ -25,5 +26,5 @@ router.use('/formmembers', formmemberRoutes);
 router.use('/datasetmembers', datasetmemberRoutes);
 router.use('/forminstances', forminstanceRoutes);
 router.use('/forminstancevalues', forminstancevalueRoutes);
-
+router.use('/upload', uploadRoute);
 export default router;

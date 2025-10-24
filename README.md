@@ -1,7 +1,7 @@
 # Hệ Thống Quản Lý Dữ Liệu ECDD
 
 ## Mô tả dự án
-Hệ thống Quản lý Dữ liệu ECDD là một nền tảng quản lý dữ liệu y tế toàn diện, cho phép người dùng tạo, quản lý và phân tích các biểu mẫu và dữ liệu liên quan đến chăm sóc sức khỏe. Hệ thống được phát triển với kiến trúc client-server hiện đại, sử dụng Angular cho frontend và Node.js với Express cho backend.
+Hệ thống Quản lý Dữ liệu ECDD là một nền tảng quản lý dữ liệu y tế toàn diện, cho phép người dùng tạo, quản lý và phân tích các biểu mẫu và dữ liệu liên quan đến chăm sóc sức khỏe. Hệ thống được phát triển với kiến trúc microservices hiện đại, sử dụng Angular cho frontend, Node.js với Express cho backend, và PostgreSQL cho cơ sở dữ liệu, tất cả được đóng gói trong các Docker container để dễ dàng triển khai và mở rộng.
 
 ## Công nghệ sử dụng
 
@@ -17,6 +17,12 @@ Hệ thống Quản lý Dữ liệu ECDD là một nền tảng quản lý dữ 
 - **TypeScript**
 - **Bootstrap** cho giao diện người dùng
 - **RxJS** cho xử lý bất đồng bộ
+
+### Công Nghệ Container
+- **Docker** cho container hóa ứng dụng
+- **Docker Compose** để quản lý đa container
+- **Nginx** làm reverse proxy
+- **Docker Volume** cho việc lưu trữ dữ liệu
 
 ## Cấu trúc thư mục
 
@@ -48,12 +54,36 @@ SangLocSomDemoInternProject/
 
 ## Hướng dẫn cài đặt
 
-### Yêu cầu hệ thống
+### Yêu cầu hệ thống (Phát triển)
 - Node.js (v14.x trở lên)
 - PostgreSQL (v12 trở lên)
 - npm hoặc yarn
+- Docker (v20.10.0 trở lên)
+- Docker Compose (v2.0.0 trở lên)
 
-### Cài đặt Backend
+### Yêu cầu hệ thống (Triển khai Production)
+- Docker (v20.10.0 trở lên)
+- Docker Compose (v2.0.0 trở lên)
+- Tối thiểu 2GB RAM
+
+### Cài đặt với Docker (Khuyến nghị)
+
+1. Tạo file `.env` từ file `.env.example` trong thư mục gốc và cập nhật các biến môi trường cần thiết.
+
+2. Chạy ứng dụng với Docker Compose:
+   ```bash
+   docker-compose up -d --build
+   ```
+
+3. Các dịch vụ sẽ được khởi động:
+   - Frontend: `http://localhost:80`
+   - Backend API: `http://localhost:3000`
+   - PostgreSQL: `localhost:5432`
+   - PgAdmin: `http://localhost:5050` (nếu được bật trong docker-compose.yml)
+
+### Cài đặt thủ công (Development)
+
+#### Cài đặt Backend
 
 1. Di chuyển vào thư mục backend:
    ```bash
@@ -72,7 +102,7 @@ SangLocSomDemoInternProject/
    npm run dev
    ```
 
-### Cài đặt Frontend
+#### Cài đặt Frontend
 
 1. Di chuyển vào thư mục frontend:
    ```bash
@@ -93,6 +123,22 @@ SangLocSomDemoInternProject/
 
 ## Kiến trúc hệ thống
 
+### Kiến trúc Container
+
+```
++------------------+     +------------------+     +------------------+
+|   Nginx Proxy   |<--->|   Frontend       |<--->|   Backend API    |
+|   (Port 80)     |     |   (Angular)      |     |   (Node.js)      |
++------------------+     +------------------+     +------------------+
+                                                         ^
+                                                         |
+                                                         v
+                                                 +------------------+
+                                                 |   PostgreSQL     |
+                                                 |   (Database)     |
+                                                 +------------------+
+```
+
 ### Luồng hoạt động của Backend
 
 1. **Nhận request từ client** thông qua các endpoint API
@@ -108,6 +154,38 @@ SangLocSomDemoInternProject/
 3. **Tương tác với API** thông qua các service
 4. **Hiển thị dữ liệu** lên giao diện người dùng
 5. **Xử lý tương tác** từ người dùng và gửi request tới server
+
+### Các lệnh Docker thông dụng
+
+- Khởi động tất cả các dịch vụ:
+  ```bash
+  docker-compose up -d
+  ```
+
+- Dừng tất cả các dịch vụ:
+  ```bash
+  docker-compose down
+  ```
+
+- Xem logs của các container:
+  ```bash
+  docker-compose logs -f
+  ```
+
+- Khởi động lại một dịch vụ cụ thể (ví dụ: backend):
+  ```bash
+  docker-compose restart backend
+  ```
+
+- Xem danh sách các container đang chạy:
+  ```bash
+  docker ps
+  ```
+
+- Xem thông tin chi tiết về một container:
+  ```bash
+  docker inspect <container_id>
+  ```
 
 ## API Documentation
 
@@ -127,6 +205,9 @@ Chi tiết các API có thể xem tại file [API_DOCUMENTATION.md](API_DOCUMENT
 - Bảo vệ các route API
 - Xử lý lỗi tập trung
 - Giới hạn tỷ lệ yêu cầu (rate limiting)
+- Cô lập mạng giữa các container
+- Sử dụng Docker secrets cho thông tin nhạy cảm
+- Cập nhật thường xuyên các image base để đảm bảo an ninh
 
 ## Đóng góp
 
