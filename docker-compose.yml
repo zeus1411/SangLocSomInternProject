@@ -1,5 +1,3 @@
-
-
 services:
   db:
     image: postgres:16-alpine
@@ -8,56 +6,120 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
     volumes:
-      - db_data:/var/lib/postgresql/data
+    - db_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+    - 5433:5432
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d admin_ecdd"]
+      test:
+      - CMD-SHELL
+      - pg_isready -U postgres -d admin_ecdd
       interval: 5s
       timeout: 5s
       retries: 20
-
   backend:
     build:
       context: ./ecdd_be2
       dockerfile: Dockerfile
     env_file:
-      - ./ecdd_be2/.env.docker
+    - ./ecdd_be2/.env.docker
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "3000:3000"
+    - 3000:3000
     restart: unless-stopped
-
   frontend:
     build:
       context: ./ecdd_fe2
     depends_on:
-      - backend
+    - backend
     ports:
-      - "8081:80"
+    - 8081:80
     restart: unless-stopped
-
   minio:
     image: minio/minio:latest
     container_name: minio
     command: server /data --console-address ":9090"
     ports:
-      - "9000:9000"   # S3 API
-      - "9090:9090"   # MinIO Console (UI)
+    - 9000:9000
+    - 9090:9090
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-12345678}
     volumes:
-      - minio_data:/data
+    - minio_data:/data
     networks:
-      - default
+    - default
+    - traefik_net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://localhost:9000/minio/health/ready
       interval: 30s
       timeout: 10s
       retries: 5
+    labels:
+    - traefik.enable=true
+    - traefik.http.routers.minio.rule=Host(`minio.localhost`)
+    - traefik.http.routers.minio.entrypoints=web
+    - traefik.http.services.minio.loadbalancer.server.port=9000
+    - traefik.http.routers.minio-console.rule=Host(`minio-console.localhost`)
+    - traefik.http.routers.minio-console.entrypoints=web
+    - traefik.http.services.minio-console.loadbalancer.server.port=9090
+  traefik:
+    image: traefik:v2.11
+    container_name: traefik
+    command:
+    - --providers.docker=true
+    - --providers.docker.exposedbydefault=false
+    - --entrypoints.web.address=:80
+    - --api.dashboard=true
+    ports:
+    - "8082:80"    
+    - "8090:8080"  
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+    - traefik_net
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command:
+    - redis-server
+    - --appendonly
+    - 'yes'
+    ports:
+    - 6379:6379
+    networks:
+    - traefik_net
+  minio-init:
+    image: minio/mc
+    container_name: minio-init
+    depends_on:
+    - minio
+    entrypoint:
+    - /bin/sh
+    - -c
+    command: mc alias set local http://minio:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+      && mc mb --ignore-existing local/images-public && mc mb --ignore-existing local/private
+      && mc anonymous set download local/images-public && mc anonymous set none local/private
+      && mc ilm rule add --expire-days "$IMAGES_TTL_DAYS" local/images-public && mc
+      ilm rule add --expire-days "$PRIVATE_TTL_DAYS" local/private && mc cors set
+      local/images-public /cors.MinIO.json && echo 'MinIO buckets ready'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-12345678}
+      IMAGES_TTL_DAYS: ${IMAGES_TTL_DAYS:-60}
+      PRIVATE_TTL_DAYS: ${PRIVATE_TTL_DAYS:-90}
+    volumes:
+    - ./cors.MinIO.json:/cors.MinIO.json:ro
+    networks:
+    - traefik_net
 volumes:
-  db_data:
-  minio_data:
+  db_data: null
+  minio_data: null
+networks:
+  traefik_net:
+    driver: bridge
