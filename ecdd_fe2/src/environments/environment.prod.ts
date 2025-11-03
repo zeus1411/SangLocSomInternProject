@@ -1,5 +1,4 @@
 export const environment = {
   production: true,
-  
-  url : 'https://ecdd.dientoan.vn'
+  url: 'http://localhost:3000'
 };

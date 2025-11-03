@@ -131,6 +131,11 @@ services:
   frontend:
     build:
       context: ./ecdd_fe2
+      dockerfile: Dockerfile
+      args:
+        CONFIG: production        # nếu bạn dùng config khác thì đổi tên
+        BASE_HREF: /
+        DEPLOY_URL: /
     depends_on:
       - backend
     ports:
