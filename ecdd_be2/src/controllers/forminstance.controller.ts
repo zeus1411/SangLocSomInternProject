@@ -8,8 +8,11 @@ import { Period } from '../models/Period';
 import { DataElement } from '../models/DataElement';
 import { DatasetMember } from '../models/DatasetMember';
 import { ResponseUtil } from '../utils/response.util';
+import { cacheGet, cacheSet, cacheDel, cacheDelPrefix, buildKey } from '../utils/cache.util';
 
 export class FormInstanceController extends BaseController<FormInstance> {
+  private entity = 'forminstance';
+
   constructor() {
     super(FormInstance);
   }
@@ -74,6 +77,9 @@ export class FormInstanceController extends BaseController<FormInstance> {
 
         await FormInstanceValue.bulkCreate(valueRecords);
       }
+
+      // Invalidate relevant caches
+      await this.invalidateAfterWrite(formInstance.id);
 
       console.log(`✅ Created FormInstance #${formInstance.id} by ${createdBy}`);
       return ResponseUtil.created(res, formInstance, 'Tạo phiếu sàng lọc thành công');
@@ -167,6 +173,9 @@ export class FormInstanceController extends BaseController<FormInstance> {
         }
       }
 
+      // Invalidate relevant caches
+      await this.invalidateAfterWrite(id);
+
       console.log(`✅ Updated FormInstance #${id} by ${updatedBy}`);
       return ResponseUtil.updated(res, formInstance, 'Cập nhật phiếu sàng lọc thành công');
       
@@ -176,10 +185,33 @@ export class FormInstanceController extends BaseController<FormInstance> {
     }
   }
   
-    // FIX: GET FormInstance with COMPLETE nested Orgunit data
-    async getComplete(req: Request, res: Response) {
+  // Invalidate relevant cache entries
+  private async invalidateAfterWrite(id?: string | number) {
+    if (id !== undefined) {
+      // Invalidate single form instance cache
+      await cacheDel(buildKey([this.entity, id]));
+      // Invalidate complete form instance cache
+      await cacheDel(buildKey([this.entity, id, 'complete']));
+      // Invalidate form instance values cache
+      await cacheDel(buildKey([this.entity, id, 'values']));
+    }
+    // Invalidate all lists
+    await cacheDelPrefix(`${this.entity}:list`);
+    // Invalidate all filtered lists
+    await cacheDelPrefix(`${this.entity}:filters`);
+  }
+
+  // FIX: GET FormInstance with COMPLETE nested Orgunit data
+  async getComplete(req: Request, res: Response) {
       try {
         const { id } = req.params;
+        const cacheKey = buildKey([this.entity, id, 'complete']);
+
+        // Try to get from cache first
+        const cached = await cacheGet<any>(cacheKey);
+        if (cached) {
+          return ResponseUtil.success(res, cached);
+        }
         
         const formInstance = await FormInstance.findByPk(id, {
           include: [
@@ -232,6 +264,9 @@ export class FormInstanceController extends BaseController<FormInstance> {
         if (!formInstance) {
           return ResponseUtil.notFound(res, 'Form instance not found');
         }
+
+        // Cache the result
+        await cacheSet(cacheKey, formInstance);
   
         return ResponseUtil.success(res, formInstance);
       } catch (error: any) {
@@ -244,6 +279,23 @@ export class FormInstanceController extends BaseController<FormInstance> {
       try {
         const { page = 1, limit = 10, formid, periodid, orgunitid } = req.query;
         const offset = (Number(page) - 1) * Number(limit);
+  
+        // Build cache key based on query parameters
+        const cacheKey = buildKey([
+          this.entity, 
+          'filters', 
+          `page:${page}`, 
+          `limit:${limit}`, 
+          formid ? `form:${formid}` : '',
+          periodid ? `period:${periodid}` : '',
+          orgunitid ? `orgunit:${orgunitid}` : ''
+        ]);
+
+        // Try to get from cache first
+        const cached = await cacheGet<any>(cacheKey);
+        if (cached) {
+          return ResponseUtil.success(res, cached);
+        }
   
         const where: any = {};
         if (formid) where.formid = formid;
@@ -262,7 +314,7 @@ export class FormInstanceController extends BaseController<FormInstance> {
           order: [['createddate', 'DESC']]
         });
   
-        return ResponseUtil.success(res, {
+        const response = {
           data: rows,
           pagination: {
             total: count,
@@ -270,7 +322,12 @@ export class FormInstanceController extends BaseController<FormInstance> {
             limit: Number(limit),
             totalPages: Math.ceil(count / Number(limit))
           }
-        });
+        };
+
+        // Cache the result
+        await cacheSet(cacheKey, response);
+  
+        return ResponseUtil.success(res, response);
       } catch (error: any) {
         console.error('Get all FormInstances error:', error);
         return ResponseUtil.error(res, error.message);
@@ -282,6 +339,14 @@ export class FormInstanceController extends BaseController<FormInstance> {
         const { id } = req.params;
         const { pageSize = 1000, page = 1 } = req.query;
         const offset = (Number(page) - 1) * Number(pageSize);
+        
+        const cacheKey = buildKey([this.entity, id, 'values', `page:${page}`, `size:${pageSize}`]);
+
+        // Try to get from cache first
+        const cached = await cacheGet<any>(cacheKey);
+        if (cached) {
+          return ResponseUtil.success(res, cached);
+        }
 
         const values = await FormInstanceValue.findAll({
           where: { forminstanceid: id },
@@ -294,6 +359,9 @@ export class FormInstanceController extends BaseController<FormInstance> {
             }
           ]
         });
+
+        // Cache the result
+        await cacheSet(cacheKey, values);
 
         return ResponseUtil.success(res, values);
       } catch (error: any) {
