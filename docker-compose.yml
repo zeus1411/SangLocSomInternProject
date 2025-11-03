@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
+    container_name: db
     environment:
       POSTGRES_DB: admin_ecdd
       POSTGRES_USER: postgres
@@ -20,8 +21,12 @@ services:
     build:
       context: ./ecdd_be2
       dockerfile: Dockerfile
+    container_name: backend
     env_file:
     - ./ecdd_be2/.env.docker
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=db
     depends_on:
       db:
         condition: service_healthy
