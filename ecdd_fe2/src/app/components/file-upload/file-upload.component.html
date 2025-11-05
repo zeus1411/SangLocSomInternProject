@@ -1,0 +1,58 @@
+<div class="file-upload-container">
+  <div class="file-input-container" [class.drag-over]="isDragging" 
+       (dragover)="onDragOver($event)" 
+       (dragleave)="onDragLeave($event)" 
+       (drop)="onDrop($event)">
+    <input 
+      type="file" 
+      id="fileInput" 
+      class="file-input" 
+      (change)="onFileSelected($event)"
+      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+    >
+    <div class="upload-area">
+      <i class="upload-icon">📁</i>
+      <p>Kéo thả file vào đây hoặc <span class="browse-link">chọn file</span></p>
+      <small class="text-muted">Hỗ trợ: Hình ảnh, PDF, Word, Excel (Tối đa: 10MB)</small>
+    </div>
+  </div>
+
+  <div class="file-info" *ngIf="selectedFile">
+    <div class="file-details">
+      <i class="file-icon">📄</i>
+      <div class="file-meta">
+        <span class="file-name">{{ selectedFile.name }}</span>
+        <span class="file-size">{{ selectedFile.size | fileSize }}</span>
+      </div>
+      <button class="remove-btn" (click)="selectedFile = null">
+        <i class="close-icon">✕</i>
+      </button>
+    </div>
+  </div>
+
+  <div class="progress-container" *ngIf="isUploading">
+    <div class="progress">
+      <div 
+        class="progress-bar" 
+        role="progressbar" 
+        [style.width.%]="progress"
+        [attr.aria-valuenow]="progress" 
+        aria-valuemin="0" 
+        aria-valuemax="100"
+      ></div>
+    </div>
+    <div class="text-center mt-2">
+      <small class="text-muted">Đang tải lên... {{ progress }}%</small>
+    </div>
+  </div>
+
+  <div class="text-center mt-3">
+    <button 
+      class="btn btn-primary upload-btn" 
+      (click)="onUpload()" 
+      [disabled]="!selectedFile || isUploading"
+    >
+      <i class="upload-icon">⬆️</i> Tải lên
+    </button>
+  </div>
+</div>

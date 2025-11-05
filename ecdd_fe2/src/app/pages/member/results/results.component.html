@@ -9,7 +9,7 @@
 
 
         <!-- ======= Breadcrumbs ======= -->
-        <section class="breadcrumbs">
+        <section id="breadcrumbs" class="breadcrumbs">
             <div class="container">
 
                 <div class="d-flex justify-content-between align-items-center">
@@ -21,16 +21,34 @@
 
             </div>
         </section><!-- End Breadcrumbs -->
-        <br/>
-            <div class="container">
 
-                <app-result-list></app-result-list>
-
+        <div class="container mt-4">
+            <!-- File Upload Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Tải lên tài liệu mới</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Chọn tệp từ máy tính của bạn để tải lên. Hỗ trợ các định dạng: PDF, DOCX, XLSX, JPG, PNG.
+                    </p>
+                    <app-file-upload
+                        (uploadComplete)="onUploadComplete($event)"
+                        (uploadError)="onUploadError($event)">
+                    </app-file-upload>
+                </div>
             </div>
-      
 
-
-
+            <!-- Results List -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Danh sách kết quả</h5>
+                </div>
+                <div class="card-body">
+                    <app-result-list></app-result-list>
+                </div>
+            </div>
+        </div>
     </main><!-- End #main -->
 
 

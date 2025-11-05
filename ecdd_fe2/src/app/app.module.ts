@@ -24,6 +24,8 @@ import { ResultListComponent } from './pages/member/results/result-list/result-l
 import { FormInstanceComponent } from './pages/member/form-instance/form-instance.component';
 import { FormDetailComponent } from './pages/form/form-detail/form-detail.component';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
+import { FileUploadComponent } from './components/file-upload/file-upload.component';
+import { FileSizePipe } from './pipe/file-size.pipe';
 
 @NgModule({
   declarations: [
@@ -44,7 +46,9 @@ import { AuthInterceptor } from './core/interceptors/auth.interceptor';
     ResultsComponent,
     ResultListComponent,
     FormInstanceComponent,
-    FormDetailComponent
+    FormDetailComponent,
+    FileUploadComponent,
+    FileSizePipe
   ],
   imports: [
     BrowserModule,
