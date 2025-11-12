@@ -12,8 +12,6 @@ services:
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -84,21 +82,6 @@ services:
     networks:
       - appnet
 
-  traefik:
-    image: traefik:v2.11
-    command:
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --entrypoints.web.address=:80
-      - --api.dashboard=true
-    ports:
-      - "8082:80"
-      - "8090:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - appnet
-
   backend:
     build:
       context: ./ecdd_be2
@@ -108,18 +91,13 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
-      # Nếu cần chờ minio-init xong trước:
-      # minio-init:
-      #   condition: service_completed_successfully
     env_file:
       - ./ecdd_be2/.env.docker
     environment:
       NODE_ENV: "production"
-      # Đảm bảo backend nói chuyện đúng service name trong Docker network:
       REDIS_HOST: "redis"
       REDIS_PORT: "6379"
       REDIS_TTL: "3600"
-      # Đảm bảo DB host trỏ về service 'db':
       DB_HOST: "db"
       DB_PORT: "5432"
     ports:
@@ -133,7 +111,7 @@ services:
       context: ./ecdd_fe2
       dockerfile: Dockerfile
       args:
-        CONFIG: production        # nếu bạn dùng config khác thì đổi tên
+        CONFIG: production
         BASE_HREF: /
         DEPLOY_URL: /
     depends_on:
