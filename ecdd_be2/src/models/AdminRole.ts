@@ -1,5 +1,5 @@
 import { Table, Column, Model, DataType, HasMany, PrimaryKey, AutoIncrement } from 'sequelize-typescript';
-import { User } from './User';
+import { AdminUser } from './AdminUser';
 
 @Table({ tableName: 'admin_roles', timestamps: true })
 export class AdminRole extends Model {
@@ -24,8 +24,8 @@ export class AdminRole extends Model {
   })
   permissions!: string[];
 
-  @HasMany(() => User)
-  users?: User[];
+  @HasMany(() => AdminUser)
+  users?: AdminUser[];
 }
 
 export default AdminRole;

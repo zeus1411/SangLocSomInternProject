@@ -7,18 +7,37 @@ import { environment } from 'src/environments/environment';
 
 export interface User {
   id: number;
-  fullName: string;
-  email: string;
-  status: string;
+
+  // Admin sẽ có fullName, user thường có name
+  fullName?: string;
+  name?: string;
+
+  // User thường
+  userid?: string;
+  type?: string;
+
+  email?: string;
+  status?: string;
   phoneNumber?: string;
-  birthday?: Date;
+  birthday?: Date | string;
   gender?: string;
   adminRoleId?: number;
   orgUnitId?: number;
+
+  // Được backend trả về trong token payload (role: 'admin' | 'user')
+  role?: 'admin' | 'user';
 }
 
+/**
+ * LoginRequest linh hoạt:
+ * - Có thể truyền email + password
+ * - Hoặc userid + password
+ * - Hoặc username (email hoặc userid) + password
+ */
 export interface LoginRequest {
-  email: string;
+  email?: string;
+  userid?: string;
+  username?: string;
   password: string;
 }
 
@@ -65,8 +84,44 @@ export class AuthService {
     }
   }
 
+  /**
+   * LOGIN:
+   * - Nếu credentials.email có giá trị -> login admin (email + password)
+   * - Nếu credentials.userid có giá trị -> login user (userid + password)
+   * - Nếu credentials.username có giá trị:
+   *      + Có ký tự '@' -> coi là email (admin)
+   *      + Không có '@' -> coi là userid (user)
+   */
   login(credentials: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.url}/api/auth/login`, credentials)
+    let body: any;
+
+    if (credentials.email) {
+      // Admin login
+      body = {
+        email: credentials.email,
+        password: credentials.password
+      };
+    } else if (credentials.userid) {
+      // User login với userid
+      body = {
+        userid: credentials.userid,
+        password: credentials.password
+      };
+    } else if (credentials.username) {
+      const username = credentials.username.trim();
+
+      body = username.includes('@')
+        ? { email: username, password: credentials.password }   // admin
+        : { userid: username, password: credentials.password }; // user
+    } else {
+      // Trường hợp xấu nhất: không có email / userid / username
+      // Backend sẽ tự trả lỗi "Vui lòng nhập email hoặc userid"
+      body = {
+        password: credentials.password
+      };
+    }
+
+    return this.http.post<AuthResponse>(`${environment.url}/api/auth/login`, body)
       .pipe(
         tap(response => {
           if (response.success) {

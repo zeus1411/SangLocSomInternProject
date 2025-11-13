@@ -15,7 +15,7 @@ import { Period } from '../models/Period';
 import { FormMember } from '../models/FormMember';
 import { DatasetMember } from '../models/DatasetMember';
 import { FormInstanceValue } from '../models/FormInstanceValue';
-
+import { AdminUser } from '../models/AdminUser';
 dotenv.config();
 
 const sequelize = new Sequelize({
@@ -27,6 +27,7 @@ const sequelize = new Sequelize({
   password: process.env.DB_PASSWORD,
   models: [
     User,
+    AdminUser,
     RegularUser,
     Person,
     AdminRole,

@@ -1,3 +1,4 @@
+// utils/jwt.util.ts
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
@@ -7,8 +8,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'this_is_a_random_key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 
 export interface JwtPayload {
-  userId: number;
-  email: string;
+  id: number;                    
+  email?: string;                 
+  fullName?: string;              
+  role: 'admin' | 'user';         
+  userid?: string;                
 }
 
 export const generateToken = (payload: JwtPayload): string => {

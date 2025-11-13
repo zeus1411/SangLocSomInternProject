@@ -11,7 +11,7 @@ import { ApiService } from '../../services/api.service';
 })
 export class LoginComponent implements OnInit {
 
-  public email: string = "";
+  public username: string = "";
   public password: string = "";
   public isLoading: boolean = false;
 
@@ -33,11 +33,11 @@ export class LoginComponent implements OnInit {
 
   public login() {
     // Validate input
-    if (!this.email || !this.password) {
+    if (!this.username || !this.password) {
       Swal.fire({
         icon: 'warning',
         title: 'Thông báo',
-        text: 'Vui lòng nhập email và mật khẩu'
+        text: 'Vui lòng nhập username và mật khẩu'
       });
       return;
     }
@@ -53,7 +53,7 @@ export class LoginComponent implements OnInit {
 
     this.isLoading = true;
 
-    this.authService.login({ email: this.email, password: this.password }).subscribe({
+    this.authService.login({ username: this.username, password: this.password }).subscribe({
       next: (response) => {
         this.isLoading = false;
         if (response.success) {
@@ -68,7 +68,7 @@ export class LoginComponent implements OnInit {
           Swal.fire({
             icon: 'error',
             title: 'Đăng nhập thất bại',
-            text: 'Email hoặc mật khẩu không đúng!'
+            text: 'Username hoặc mật khẩu không đúng!'
           });
         }
       },
@@ -79,9 +79,9 @@ export class LoginComponent implements OnInit {
         let errorMessage = 'Đăng nhập thất bại. Vui lòng thử lại.';
 
         if (error.status === 400) {
-          errorMessage = 'Email hoặc mật khẩu không hợp lệ. Mật khẩu phải có ít nhất 6 ký tự.';
+          errorMessage = 'Username hoặc mật khẩu không hợp lệ. Mật khẩu phải có ít nhất 6 ký tự.';
         } else if (error.status === 401) {
-          errorMessage = 'Email hoặc mật khẩu không đúng!';
+          errorMessage = 'Username hoặc mật khẩu không đúng!';
         }
 
         Swal.fire({

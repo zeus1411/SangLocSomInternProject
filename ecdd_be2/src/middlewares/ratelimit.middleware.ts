@@ -104,8 +104,15 @@ export const formSubmissionRateLimiter = (req: Request, res: Response, next: Nex
   const now = Date.now();
   
   // Determine identifier and limits
-  const isAuthenticated = !!(req.user?.email && req.user?.userId);
-  const identifier = isAuthenticated ? req.user!.email : (req.clientIp || 'unknown');
+  // => Chỉ cần check xem có req.user hay không là biết user đã đăng nhập
+  const isAuthenticated = !!req.user;
+
+  // identifier luôn là string (không để TS đoán 'string | undefined')
+  const identifier: string = isAuthenticated
+    // ưu tiên email, nếu không có thì dùng userid, cuối cùng fallback clientIp / 'unknown'
+    ? (req.user!.email ?? (req.user as any).userid ?? (req as any).clientIp ?? 'unknown')
+    : ((req as any).clientIp ?? 'unknown');
+
   const maxRequests = isAuthenticated 
     ? FORM_SUBMISSION_CONFIG.MAX_REQUESTS_AUTHENTICATED 
     : FORM_SUBMISSION_CONFIG.MAX_REQUESTS_ANONYMOUS;
@@ -132,12 +139,9 @@ export const formSubmissionRateLimiter = (req: Request, res: Response, next: Nex
   if (!entry || (now - entry.firstRequestTime) > FORM_SUBMISSION_CONFIG.WINDOW_MS) {
     entry = { count: 1, firstRequestTime: now };
     formSubmissionRateLimitStore.set(identifier, entry);
-    
-    console.log(`✅ Rate limit initialized: ${identifier} (1/${maxRequests})`);
-    
-    // Headers
+
     res.setHeader('X-RateLimit-Limit', maxRequests.toString());
-    res.setHeader('X-RateLimit-Remaining', (maxRequests - 1).toString());
+    res.setHeader('X-RateLimit-Remaining', (maxRequests - entry.count).toString());
     res.setHeader('X-RateLimit-Reset', new Date(entry.firstRequestTime + FORM_SUBMISSION_CONFIG.WINDOW_MS).toISOString());
     
     return next();
@@ -154,12 +158,10 @@ export const formSubmissionRateLimiter = (req: Request, res: Response, next: Nex
     const blockMinutes = Math.ceil(FORM_SUBMISSION_CONFIG.BLOCK_DURATION_MS / 60000);
     
     console.log(`🚫 Rate limit exceeded: ${identifier} (${entry.count}/${maxRequests})`);
-    
+
     return res.status(429).json({
       success: false,
-      message: isAuthenticated
-        ? `Bạn đã gửi quá nhiều form. Vui lòng thử lại sau ${blockMinutes} phút.`
-        : `Quá nhiều yêu cầu từ IP này. Vui lòng đăng nhập hoặc thử lại sau ${blockMinutes} phút.`,
+      message: `Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau ${blockMinutes} phút.`,
       data: {
         limit: maxRequests,
         remaining: 0,

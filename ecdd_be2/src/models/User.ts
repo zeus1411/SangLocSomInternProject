@@ -1,43 +1,47 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasMany, PrimaryKey, AutoIncrement } from 'sequelize-typescript';
-import { AdminRole } from './AdminRole';
+// models/User.ts
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  PrimaryKey,
+  AutoIncrement,
+} from 'sequelize-typescript';
 
-@Table({ tableName: 'admin_users', timestamps: true, createdAt: 'createdAt', updatedAt: 'updatedAt', deletedAt: 'deletedAt' })
+@Table({
+  tableName: 'users',
+  timestamps: true,
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+})
 export class User extends Model {
   @PrimaryKey
   @AutoIncrement
   @Column(DataType.INTEGER)
   id!: number;
 
-  @Column({ type: DataType.STRING, allowNull: false })
-  fullName!: string;
-
+  // userid dạng string
   @Column({ type: DataType.STRING, allowNull: false, unique: true })
-  email!: string;
+  userid!: string;
 
-  @Column({ type: DataType.STRING, allowNull: false })
+  @Column({ type: DataType.STRING, allowNull: true })
+  name?: string;
+
+  @Column({ type: DataType.STRING, allowNull: true, unique: true })
+  email?: string;
+
+  // map sang cột "pass"
+  @Column({ type: DataType.STRING, allowNull: false, field: 'pass' })
   password!: string;
 
-  @Column({ type: DataType.STRING, allowNull: false, defaultValue: 'active' })
-  status!: string;
+  @Column({ type: DataType.STRING, allowNull: true })
+  type?: string;
 
-  @Column({ type: DataType.STRING, field: 'phoneNumber' })
-  phoneNumber?: string;
+  @Column({ type: DataType.BOOLEAN, allowNull: true, field: 'deletedyn', defaultValue: false })
+  deletedYn?: boolean;
 
-  @Column({ type: DataType.DATE, field: 'birthday' })
-  birthday?: Date;
-
-  @Column({ type: DataType.STRING, field: 'gender' })
-  gender?: string;
-
-  @ForeignKey(() => AdminRole)
-  @Column({ field: 'adminRoleId' })
-  adminRoleId?: number;
-
-  @Column({ field: 'orgunitid' })
-  orgUnitId?: number;
-
-  @BelongsTo(() => AdminRole)
-  adminRole?: AdminRole;
+  @Column({ type: DataType.DATE, allowNull: true, field: 'deletedtime' })
+  deletedTime?: Date;
 }
 
 export default User;
