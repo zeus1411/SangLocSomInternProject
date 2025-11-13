@@ -29,7 +29,7 @@ export class FormInstanceController extends BaseController<FormInstance> {
       let createdBy: string;
       let surveyNote: string | undefined;
       
-      if (req.user?.email && req.user?.userId) {
+      if (req.user?.email && req.user?.id) {
         // CASE 2: Valid token - Use email from JWT
         createdBy = req.user.email;
         console.log(`✅ Case 2: Create by authenticated user: ${createdBy}`);
@@ -108,7 +108,7 @@ export class FormInstanceController extends BaseController<FormInstance> {
       let updatedBy: string;
       let updateNote: string | undefined;
       
-      if (req.user?.email && req.user?.userId) {
+      if (req.user?.email && req.user?.id) {
         // CASE 2: Valid token
         updatedBy = req.user.email;
         console.log(`✅ Case 2: Update by authenticated user: ${updatedBy}`);
