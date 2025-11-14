@@ -595,7 +595,7 @@ export class FormInstanceComponent implements OnInit {
     let that = this;
     that.isloading = true;
 
-    let headers = new HttpHeaders().set('Authorization', 'Bearer ' + (localStorage.getItem("token") || ''));
+    const headers = this.authService.getAuthHeaders();
     let values = [];
     
     // Collect form values

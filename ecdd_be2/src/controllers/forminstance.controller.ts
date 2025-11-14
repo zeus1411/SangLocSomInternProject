@@ -9,7 +9,8 @@ import { DataElement } from '../models/DataElement';
 import { DatasetMember } from '../models/DatasetMember';
 import { ResponseUtil } from '../utils/response.util';
 import { cacheGet, cacheSet, cacheDel, cacheDelPrefix, buildKey } from '../utils/cache.util';
-
+import { JwtPayload } from '../utils/jwt.util';
+import sequelize from '../config/database';
 export class FormInstanceController extends BaseController<FormInstance> {
   private entity = 'forminstance';
 
@@ -24,23 +25,36 @@ export class FormInstanceController extends BaseController<FormInstance> {
     try {
       const { instance, values } = req.body;
       const now = new Date();
-      
+
       // XÁC ĐỊNH createdBy và surveyNote
+      const authUser: any = req.user;
       let createdBy: string;
       let surveyNote: string | undefined;
-      
-      if (req.user?.email && req.user?.id) {
-        // CASE 2: Valid token - Use email from JWT
-        createdBy = req.user.email;
-        console.log(`✅ Case 2: Create by authenticated user: ${createdBy}`);
+
+      if (authUser && (authUser.email || authUser.userid || authUser.id)) {
+        // Đã login: ưu tiên email, sau đó userid, cuối cùng là id
+        if (authUser.email) {
+          createdBy = authUser.email;
+        } else if (authUser.userid) {
+          createdBy = authUser.userid;
+        } else {
+          createdBy = String(authUser.id);
+        }
+        console.log(`✅ Create by authenticated user: ${createdBy}`);
       } else {
-        // CASE 3: No token - Use IP address
+        // Không có token → anonymous + log IP
         createdBy = 'anonymous';
-        surveyNote = `Created from IP: ${req.clientIp || 'unknown'} at ${now.toISOString()}`;
-        console.log(`⚠️ Case 3: Create by anonymous user. ${surveyNote}`);
+        const ip =
+          (req as any).clientIp ||
+          (req.headers['x-forwarded-for'] as string) ||
+          req.socket.remoteAddress ||
+          'unknown';
+
+        surveyNote = `Created from IP: ${ip} at ${now.toISOString()}`;
+        console.log(`⚠️ Create by anonymous user. ${surveyNote}`);
       }
 
-      // Create FormInstance
+      // Tạo FormInstance – GIỮ NGUYÊN mapping instance.*, chỉ sửa 4 field audit sang camelCase
       const formInstance = await FormInstance.create({
         personid: instance.personid,
         name: instance.name,
@@ -59,31 +73,42 @@ export class FormInstanceController extends BaseController<FormInstance> {
         orgunitid: instance.orgunitid,
         provinceid: instance.provinceid,
         districtid: instance.districtid,
-        createddate: now,
-        createdby: createdBy,
-        surveyNote: surveyNote
+
+        // 🔥 ĐÚNG THEO MODEL: createdDate / createdBy
+        createdDate: now,
+        createdBy: createdBy,
+
+        // nếu muốn, có thể set luôn updated* khi tạo mới
+        updatedDate: now,
+        updatedBy: createdBy,
+
+        // model dùng surveyNote (camelCase) map xuống cột "surveynote"
+        surveyNote: surveyNote ?? instance.surveyNote ?? instance.surveynote,
       });
 
-      // Create FormInstanceValues
+      // Lưu FormInstanceValue (logic cũ giữ nguyên)
       if (values && values.length > 0) {
         const valueRecords = values.map((v: any) => ({
           forminstanceid: formInstance.id,
           datasetmemberid: v.datasetmember?.id,
           dataelementid: v.datasetmember?.dataelementid,
           value: v.value,
-          createddate: now,
-          createdby: createdBy
+          createddate: now,        // FormInstanceValue model dùng createddate lowercase
+          createdby: createdBy,
         }));
 
         await FormInstanceValue.bulkCreate(valueRecords);
       }
 
-      // Invalidate relevant caches
+      // Xoá cache liên quan
       await this.invalidateAfterWrite(formInstance.id);
 
       console.log(`✅ Created FormInstance #${formInstance.id} by ${createdBy}`);
-      return ResponseUtil.created(res, formInstance, 'Tạo phiếu sàng lọc thành công');
-      
+      return ResponseUtil.created(
+        res,
+        formInstance,
+        'Tạo phiếu sàng lọc thành công',
+      );
     } catch (error: any) {
       console.error('❌ Create FormInstance error:', error);
       return ResponseUtil.error(res, error.message);
@@ -139,9 +164,11 @@ export class FormInstanceController extends BaseController<FormInstance> {
         orgunitid: instance.orgunitid,
         provinceid: instance.provinceid,
         districtid: instance.districtid,
-        updateddate: now,
-        updatedby: updatedBy,
-        surveyNote: updateNote || formInstance.surveyNote
+
+        updatedDate: now,
+        updatedBy: updatedBy,
+
+        surveyNote: updateNote || formInstance.surveyNote,
       });
 
       // Update or Insert Values
@@ -330,6 +357,72 @@ export class FormInstanceController extends BaseController<FormInstance> {
         return ResponseUtil.success(res, response);
       } catch (error: any) {
         console.error('Get all FormInstances error:', error);
+        return ResponseUtil.error(res, error.message);
+      }
+    }
+
+    async getMyFormInstances(req: Request, res: Response) {
+      try {
+        const authUser: any = req.user;
+        if (!authUser) {
+          return ResponseUtil.unauthorized(res, 'Vui lòng đăng nhập.');
+        }
+
+        // Xác định createdBy dựa trên JWT
+        let createdBy: string | undefined;
+        if (authUser.email) {
+          createdBy = authUser.email;
+        } else if (authUser.userid) {
+          createdBy = authUser.userid;
+        } else if (authUser.id) {
+          createdBy = String(authUser.id);
+        }
+
+        if (!createdBy) {
+          return ResponseUtil.error(
+            res,
+            'Không xác định được người tạo từ token.',
+          );
+        }
+
+        const { page = 1, limit = 10, formid, periodid, orgunitid } = req.query;
+        const pageNum = Number(page) || 1;
+        const limitNum = Number(limit) || 10;
+        const offset = (pageNum - 1) * limitNum;
+
+        // 🔥 Dùng đúng tên attribute của model: createdBy
+        const where: any = { createdBy };
+
+        if (formid) where.formid = formid;
+        if (periodid) where.periodid = periodid;
+        if (orgunitid) where.orgunitid = orgunitid;
+
+        const { count, rows } = await FormInstance.findAndCountAll({
+          where,
+          limit: limitNum,
+          offset,
+          include: [
+            { model: Form, as: 'form' },
+            { model: OrgUnit, as: 'orgunit' },
+            { model: Period, as: 'period' },
+          ],
+          // có thể dùng 'createdDate' hoặc 'createddate', cả 2 đều ok, mình để theo cột DB
+          order: [['createddate', 'DESC']],
+        });
+
+        const response = {
+          data: rows,
+          pagination: {
+            total: count,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil(count / limitNum),
+          },
+        };
+
+        return ResponseUtil.success(res, response);
+      } catch (error: any) {
+        console.error('Get my FormInstances error:', error);
         return ResponseUtil.error(res, error.message);
       }
     }

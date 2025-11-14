@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { FormInstanceController } from '../controllers/forminstance.controller';
-import { optionalAuthMiddleware } from '../middlewares/auth.middleware';
+import { optionalAuthMiddleware, authMiddleware } from '../middlewares/auth.middleware';
 import { formSubmissionRateLimiter } from '../middlewares/ratelimit.middleware';
 
 const router = Router();
@@ -8,6 +8,9 @@ const controller = new FormInstanceController();
 
 // Public routes - No authentication required
 router.get('/', (req, res) => controller.getAllWithFilters(req, res));
+
+router.get('/my', authMiddleware, (req, res) => controller.getMyFormInstances(req, res));
+
 router.get('/:id/value', (req, res) => controller.getValues(req, res));
 router.get('/:id', (req, res) => controller.getComplete(req, res));
 
