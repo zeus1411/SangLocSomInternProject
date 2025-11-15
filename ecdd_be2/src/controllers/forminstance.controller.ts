@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Op } from 'sequelize';
 import { BaseController } from './base.controller';
 import { FormInstance } from '../models/FormInstance';
 import { FormInstanceValue } from '../models/FormInstanceValue';
@@ -226,6 +227,8 @@ export class FormInstanceController extends BaseController<FormInstance> {
     await cacheDelPrefix(`${this.entity}:list`);
     // Invalidate all filtered lists
     await cacheDelPrefix(`${this.entity}:filters`);
+    // Invalidate all "my" cache entries
+    await cacheDelPrefix(`${this.entity}:my`);
   }
 
   // FIX: GET FormInstance with COMPLETE nested Orgunit data
@@ -292,7 +295,7 @@ export class FormInstanceController extends BaseController<FormInstance> {
           return ResponseUtil.notFound(res, 'Form instance not found');
         }
 
-        // Cache the result
+        // Lưu kết quả vào cache
         await cacheSet(cacheKey, formInstance);
   
         return ResponseUtil.success(res, formInstance);
@@ -351,7 +354,7 @@ export class FormInstanceController extends BaseController<FormInstance> {
           }
         };
 
-        // Cache the result
+        // Lưu kết quả vào cache
         await cacheSet(cacheKey, response);
   
         return ResponseUtil.success(res, response);
@@ -385,17 +388,46 @@ export class FormInstanceController extends BaseController<FormInstance> {
           );
         }
 
-        const { page = 1, limit = 10, formid, periodid, orgunitid } = req.query;
+        const { page = 1, limit = 10, formid, periodid, orgunitid, q } = req.query;
         const pageNum = Number(page) || 1;
         const limitNum = Number(limit) || 10;
         const offset = (pageNum - 1) * limitNum;
 
-        // 🔥 Dùng đúng tên attribute của model: createdBy
+        // Xây dựng cache key dựa trên các tham số query bao gồm cả tìm kiếm
+        const cacheKey = buildKey([
+          this.entity, 
+          'my', 
+          createdBy,
+          `page:${page}`, 
+          `limit:${limit}`, 
+          formid ? `form:${formid}` : '',
+          periodid ? `period:${periodid}` : '',
+          orgunitid ? `orgunit:${orgunitid}` : '',
+          q ? `search:${q}` : ''
+        ]);
+
+        // Thử lấy từ cache trước
+        const cached = await cacheGet<any>(cacheKey);
+        if (cached) {
+          return ResponseUtil.success(res, cached);
+        }
+
+        // Sử dụng đúng tên attribute của model: createdBy
         const where: any = { createdBy };
 
         if (formid) where.formid = formid;
         if (periodid) where.periodid = periodid;
         if (orgunitid) where.orgunitid = orgunitid;
+        
+        // 🔍 Thêm chức năng tìm kiếm cho các trường tên, địa chỉ, tên cha và số điện thoại
+        if (q) {
+          where[Op.or] = [
+            { name: { [Op.iLike]: `%${q}%` } },
+            { address: { [Op.iLike]: `%${q}%` } },
+            { parentname: { [Op.iLike]: `%${q}%` } },
+            { phone: { [Op.iLike]: `%${q}%` } }
+          ];
+        }
 
         const { count, rows } = await FormInstance.findAndCountAll({
           where,
@@ -419,6 +451,9 @@ export class FormInstanceController extends BaseController<FormInstance> {
             totalPages: Math.ceil(count / limitNum),
           },
         };
+
+        // Lưu kết quả vào cache
+        await cacheSet(cacheKey, response);
 
         return ResponseUtil.success(res, response);
       } catch (error: any) {
@@ -453,7 +488,7 @@ export class FormInstanceController extends BaseController<FormInstance> {
           ]
         });
 
-        // Cache the result
+        // Lưu kết quả vào cache
         await cacheSet(cacheKey, values);
 
         return ResponseUtil.success(res, values);
