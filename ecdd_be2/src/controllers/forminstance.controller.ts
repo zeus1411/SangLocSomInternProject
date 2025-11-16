@@ -220,8 +220,11 @@ export class FormInstanceController extends BaseController<FormInstance> {
       await cacheDel(buildKey([this.entity, id]));
       // Invalidate complete form instance cache
       await cacheDel(buildKey([this.entity, id, 'complete']));
-      // Invalidate form instance values cache
+      // Invalidate form instance values cache (including paginated ones)
       await cacheDel(buildKey([this.entity, id, 'values']));
+      await cacheDelPrefix(`${this.entity}:${id}:values:`);
+      // Also invalidate any potential cache with different page sizes
+      await cacheDelPrefix(`${this.entity}:${id}:values:page:`);
     }
     // Invalidate all lists
     await cacheDelPrefix(`${this.entity}:list`);
