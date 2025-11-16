@@ -198,23 +198,23 @@ export class FormInstanceComponent implements OnInit {
       console.log('🎂 Converted birthday:', this.person.birthday);
 
       // FIX: Xử lý Orgunit với cấu trúc đúng
-      if (data.Orgunit) {
-        console.log('🏘️ Full Orgunit structure:', JSON.stringify(data.Orgunit, null, 2));
+      if (data.orgunit) {
+        console.log('🏘️ Full Orgunit structure:', JSON.stringify(data.orgunit, null, 2));
         
         // Xã (Level 3)
         const xaId = data.orgunitid;
-        const xa = data.Orgunit;
+        const xa = data.orgunit;
         console.log('📍 Xã:', { id: xaId, name: xa.name, level: xa.level, parentid: xa.parentid });
         
-        // Huyện (Level 2) - từ Xã.Parent
-        if (xa.Parent) {
-          const huyen = xa.Parent;
+        // Huyện (Level 2) - từ Xã.parent (lowercase)
+        if (xa.parent) {
+          const huyen = xa.parent;
           const huyenId = huyen.id;
           console.log('📍 Huyện:', { id: huyenId, name: huyen.name, level: huyen.level, parentid: huyen.parentid });
           
-          // Tỉnh (Level 1) - từ Huyện.Parent
-          if (huyen.Parent) {
-            const tinh = huyen.Parent;
+          // Tỉnh (Level 1) - từ Huyện.parent (lowercase)
+          if (huyen.parent) {
+            const tinh = huyen.parent;
             const tinhId = tinh.id;
             console.log('📍 Tỉnh:', { id: tinhId, name: tinh.name, level: tinh.level });
             
@@ -240,10 +240,10 @@ export class FormInstanceComponent implements OnInit {
               orgunitid: this.person.orgunitid
             });
           } else {
-            console.warn('⚠️ Missing Huyện.Parent (Tỉnh)');
+            console.warn('⚠️ Missing huyện.parent (tỉnh)');
           }
         } else {
-          console.warn('⚠️ Missing Xã.Parent (Huyện)');
+          console.warn('⚠️ Missing xã.parent (huyện)');
         }
       } else {
         console.warn('⚠️ No Orgunit data found');
