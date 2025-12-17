@@ -131,19 +131,32 @@ export class FormInstanceController extends BaseController<FormInstance> {
       }
 
       // XÁC ĐỊNH updatedBy
+      const authUser: any = req.user;
       let updatedBy: string;
       let updateNote: string | undefined;
       
-      if (req.user?.email && req.user?.id) {
-        // CASE 2: Valid token
-        updatedBy = req.user.email;
-        console.log(`✅ Case 2: Update by authenticated user: ${updatedBy}`);
+      if (authUser && (authUser.email || authUser.userid || authUser.id)) {
+        // Đã login: ưu tiên email, sau đó userid, cuối cùng là id
+        if (authUser.email) {
+          updatedBy = authUser.email;
+        } else if (authUser.userid) {
+          updatedBy = authUser.userid;
+        } else {
+          updatedBy = String(authUser.id);
+        }
+        console.log(`✅ Update by authenticated user: ${updatedBy}`);
       } else {
-        // CASE 3: No token - Track IP
+        // Không có token → anonymous + log IP
         updatedBy = 'anonymous';
+        const ip =
+          (req as any).clientIp ||
+          (req.headers['x-forwarded-for'] as string) ||
+          req.socket.remoteAddress ||
+          'unknown';
+        
         const existingNote = formInstance.surveyNote || '';
-        updateNote = `${existingNote}\nUpdated from IP: ${req.clientIp || 'unknown'} at ${now.toISOString()}`;
-        console.log(`⚠️ Case 3: Update by anonymous user. IP: ${req.clientIp}`);
+        updateNote = `${existingNote}\nUpdated from IP: ${ip} at ${now.toISOString()}`;
+        console.log(`⚠️ Update by anonymous user. ${updateNote}`);
       }
 
       // Update FormInstance
